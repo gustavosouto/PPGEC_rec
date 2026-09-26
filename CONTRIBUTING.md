@@ -174,6 +174,8 @@ Passos para conferir localmente, com os dados fictícios.
 - [ ] Migrations revisadas (seção 5)
 - [ ] Nenhum dado real, senha ou `.env` no código
 - [ ] Nenhum documento de planejamento ou anotação de reunião no diff
+- [ ] Com a chave do módulo desligada, o sistema se comporta como antes
+- [ ] Ensaio de produção executado (só no pull request ao repositório original)
 ```
 
 O pull request interno vai para a `develop` **deste fork**. Ao abrir pela linha de comando, informe o repositório, porque o padrão do GitHub num fork é o repositório original:
@@ -196,6 +198,16 @@ gh pr create --repo gustavosouto/PPGEC_rec --base develop
 - Uma mudança por pull request, só com código.
 - A descrição segue o mesmo modelo. Em "Como testar", os passos precisam funcionar sem os dados fictícios da equipe.
 - Só é aberto depois que a mudança passou pela `homolog` e foi validada pelo Product Owner com a secretaria.
+
+### O Acadflow em produção não pode quebrar
+
+O merge na `main` do repositório original vai para produção em poucos minutos. O contêiner `web` aplica as migrations ao subir, e uma migration com falha impede o site de subir, sem volta automática para a versão anterior. Por isso, todo pull request ao repositório original segue estas regras:
+
+- Os testes do fork passam em PostgreSQL 16, o mesmo banco da produção, e não só em SQLite.
+- O ensaio de produção foi executado: imagem construída com o `Dockerfile` do projeto, serviços do `docker-compose-prod.yml` no ar, migrations aplicadas sobre um banco já migrado até a `main` do repositório original e páginas principais abertas com cada perfil, sem exceção no log e sem contêiner reiniciando. O resultado vai na descrição do pull request.
+- Tudo que o módulo da equipe mostra ou executa fica atrás da chave do módulo, desligada por padrão. Com a chave desligada, o sistema se comporta exatamente como antes. A descrição traz uma seção "Como ligar".
+- Migrations só criam tabelas novas do módulo da equipe.
+- Um pull request por vez, nunca dois no mesmo dia. Depois de cada merge, as páginas principais são conferidas em produção.
 
 ## 5. Migrations
 
