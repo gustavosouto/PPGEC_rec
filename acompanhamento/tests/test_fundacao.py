@@ -30,7 +30,7 @@ class PaginaInicialTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.perfis = criar_perfis()
-        cls.endereco = reverse("acompanhamento:inicio")
+        cls.endereco = reverse("acompanhamento:acompanhamento_inicio")
 
     @override_settings(ACOMPANHAMENTO_ATIVO=False)
     def test_chave_desligada_responde_como_pagina_inexistente_para_todos(self):
