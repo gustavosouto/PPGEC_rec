@@ -130,7 +130,7 @@ jobs:
         env:
           ENSAIO_TAG: ensaio
         run: |
-          docker compose logs --no-color > logs-ensaio.txt 2>&1
+          docker compose logs --no-color web celery celery-beat > logs-ensaio.txt 2>&1
           if grep -nE "Traceback|Exception|ERROR" logs-ensaio.txt; then
             echo "Encontrado registro de erro nos logs"; exit 1
           fi
