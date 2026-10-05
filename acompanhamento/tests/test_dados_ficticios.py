@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 from io import StringIO
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -86,3 +87,14 @@ class GerarDadosFicticiosTests(TestCase):
         saida = rodar()
         self.assertIn("Docentes permanentes internos", saida)
         self.assertIn("Processos finalizados", saida)
+
+    def test_falha_no_meio_desfaz_tudo(self):
+        rodar()
+        antes = User.objects.filter(email__endswith=DOMINIO).count()
+        with patch(
+            "acompanhamento.management.commands.gerar_dados_ficticios.Command.criar_processos",
+            side_effect=RuntimeError("falha forçada"),
+        ):
+            with self.assertRaises(RuntimeError):
+                rodar()
+        self.assertEqual(User.objects.filter(email__endswith=DOMINIO).count(), antes)
