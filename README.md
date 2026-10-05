@@ -1,6 +1,6 @@
 # PPGEC - Sistema de Gestão de Processos
 
-Aplicação Django para gestão de processos acadêmicos do PPGEC, com perfis de acesso para alunos, docentes, coordenação e servidores.
+Aplicação Django para gestão de processos acadêmicos do PPGEC, com perfis de acesso para alunos, docentes, coordenação e servidores. 
 
 ## Requisitos
 
