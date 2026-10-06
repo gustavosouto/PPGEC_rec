@@ -79,7 +79,19 @@ jobs:
           ENSAIO_TAG: ensaio
         run: |
           docker compose up -d db redis web celery celery-beat
-          docker compose exec -T web python manage.py migrate
+          # O web aplica as migrations sozinho ao subir (entrypoint.sh), como na
+          # produção. Um segundo migrate em paralelo disputa a criação das
+          # tabelas, então o ensaio só espera e confere que nada ficou pendente.
+          for i in $(seq 1 60); do
+            if docker compose exec -T web python manage.py migrate --check > /dev/null 2>&1; then
+              echo "Migrations aplicadas (tentativa $i)"; break
+            fi
+            if [ "$i" = "60" ]; then
+              echo "As migrations não terminaram a tempo"
+              docker compose logs --no-color web; exit 1
+            fi
+            sleep 2
+          done
           docker compose exec -T web python manage.py makemigrations --check --dry-run
           docker compose ps
 
