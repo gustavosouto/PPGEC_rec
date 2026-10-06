@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% load l10n %}
 {% block title %}Painel de Docentes | Coordenação{% endblock %}
 
 {% block content %}
@@ -51,7 +51,7 @@
                     <div>
                         <strong>{{ polo.nome }}</strong>
                         <div class="barra-progresso" role="img" aria-label="{{ polo.nome }}: {{ polo.percentual|floatformat:1 }}% dos docentes">
-                            <span style="width: {{ polo.percentual }}%"></span>
+                            <span style="width: {{ polo.percentual|unlocalize }}%"></span>
                         </div>
                     </div>
                     <span class="estado-item">{{ polo.total_docentes }} docente{{ polo.total_docentes|pluralize }} · {{ polo.percentual|floatformat:1 }}%</span>
