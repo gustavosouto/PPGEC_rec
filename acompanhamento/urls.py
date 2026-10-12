@@ -9,4 +9,5 @@ urlpatterns = [
     # ativo comparando só o nome da rota, sem o prefixo do módulo.
     path("", views.inicio, name="acompanhamento_inicio"),
     path("docentes/", views.painel_docentes, name="painel_docentes"),
+    path("processos/", views.painel_processos, name="painel_processos"),
 ]
