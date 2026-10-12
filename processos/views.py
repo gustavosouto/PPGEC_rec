@@ -1,7 +1,9 @@
 import logging
 import re
 from datetime import datetime, timedelta
+from io import BytesIO
 
+from openpyxl import Workbook
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -2623,16 +2625,93 @@ def alunos_view(request):
         alunos_sem_matricula_ids = alunos_ativos_sem_matricula(periodo_sem_matricula).values("pk")
         queryset = queryset.filter(pk__in=alunos_sem_matricula_ids)
 
-    # Pagina antes de anotar a trajetoria: a anotacao faz uma consulta por
-    # aluno, entao rodar sobre a lista inteira custaria N consultas para exibir
-    # 25 linhas.
-    pagina = _paginar(request, queryset.distinct().order_by("nome"))
-    alunos = list(pagina.object_list)
-    for aluno_item in alunos:
-        trajetoria_atual = aluno_item.trajetoria_ativa()
-        if not trajetoria_atual:
-            trajetoria_atual = aluno_item.trajetorias.order_by("-criado_em").first()
-        aluno_item.trajetoria_atual = trajetoria_atual
+    acompanhamento_ativo = settings.ACOMPANHAMENTO_ATIVO
+    marco = ""
+    situacao_marco = ""
+    semestre_marco = ""
+    linhas_marco = None
+    filtros_marco_validos = True
+    exportar_excel = False
+    marcos = ()
+    situacoes_marco = ()
+    filtros_rotulos = {
+        "nome": ("Nome", None),
+        "status": ("Status", dict(Aluno.StatusAluno.choices).get),
+        "polo": ("Polo", lambda v: Polo.objects.filter(pk=v).values_list("nome", flat=True).first()),
+        "nivel": ("Nível", dict(Aluno.NivelCurso.choices).get),
+        "reingressante": ("Reingressante", lambda v: "Sim" if v == "1" else "Não"),
+        "ingresso_inicio": ("Ingresso de", None),
+        "ingresso_fim": ("Ingresso até", None),
+        "sem_matricula_periodo": ("Sem matrícula em", _nome_do_periodo),
+    }
+
+    if acompanhamento_ativo:
+        from acompanhamento.lista_alunos import (
+            DEFESA,
+            IRREGULARES,
+            MARCO_INTERMEDIARIO,
+            MARCOS,
+            SITUACOES,
+            listar_alunos_por_marco,
+        )
+
+        marco = request.GET.get("marco", "").strip()
+        situacao_marco = request.GET.get("situacao_marco", "").strip()
+        semestre_marco = request.GET.get("semestre_marco", "").strip()
+        exportar_excel = request.GET.get("exportar") == "xlsx"
+        marcos = (
+            (MARCO_INTERMEDIARIO, MARCOS[MARCO_INTERMEDIARIO]),
+            (DEFESA, MARCOS[DEFESA]),
+        )
+        situacoes_marco = (
+            (IRREGULARES, "Irregulares"),
+            *SITUACOES.items(),
+        )
+        filtros_rotulos.update(
+            {
+                "marco": ("Marco", MARCOS.get),
+                "situacao_marco": (
+                    "Situação no marco",
+                    dict(((IRREGULARES, "Irregulares"), *SITUACOES.items())).get,
+                ),
+                "semestre_marco": ("Semestre do marco", None),
+            }
+        )
+
+    if marco:
+        try:
+            linhas_marco = listar_alunos_por_marco(
+                queryset.distinct(),
+                marco,
+                situacao=situacao_marco,
+                semestre_marco=semestre_marco,
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            linhas_marco = []
+            filtros_marco_validos = False
+        if exportar_excel and filtros_marco_validos:
+            return _resposta_xlsx_alunos_por_marco(linhas_marco, marco, MARCOS[marco])
+        for linha in linhas_marco:
+            linha.aluno.trajetoria_atual = linha.trajetoria
+            linha.aluno.linha_marco = linha
+        pagina = _paginar(request, linhas_marco)
+        alunos = [linha.aluno for linha in pagina.object_list]
+    else:
+        if situacao_marco or semestre_marco:
+            messages.error(request, "Selecione um marco para filtrar a situação dos alunos.")
+        if exportar_excel:
+            messages.error(request, "Selecione um marco antes de baixar a planilha.")
+        # Pagina antes de anotar a trajetoria: a anotacao faz uma consulta por
+        # aluno, entao rodar sobre a lista inteira custaria N consultas para exibir
+        # 25 linhas.
+        pagina = _paginar(request, queryset.distinct().order_by("nome"))
+        alunos = list(pagina.object_list)
+        for aluno_item in alunos:
+            trajetoria_atual = aluno_item.trajetoria_ativa()
+            if not trajetoria_atual:
+                trajetoria_atual = aluno_item.trajetorias.order_by("-criado_em").first()
+            aluno_item.trajetoria_atual = trajetoria_atual
 
     return render(
         request,
@@ -2650,22 +2729,17 @@ def alunos_view(request):
             "periodos_letivos": PeriodoLetivo.objects.order_by("-nome"),
             "filtro_sem_matricula_periodo": periodo_sem_matricula_id,
             "periodo_sem_matricula": periodo_sem_matricula,
+            "marcos": marcos,
+            "situacoes_marco": situacoes_marco,
+            "acompanhamento_ativo": acompanhamento_ativo,
+            "filtro_marco": marco,
+            "filtro_situacao_marco": situacao_marco,
+            "filtro_semestre_marco": semestre_marco,
+            "marco_selecionado": bool(marco),
             "total_alunos_filtrados": pagina.paginator.count,
             "status_list": Aluno.StatusAluno.choices,
             "nivel_list": Aluno.NivelCurso.choices,
-            "filtros_ativos": _filtros_ativos(
-                request,
-                {
-                    "nome": ("Nome", None),
-                    "status": ("Status", dict(Aluno.StatusAluno.choices).get),
-                    "polo": ("Polo", lambda v: Polo.objects.filter(pk=v).values_list("nome", flat=True).first()),
-                    "nivel": ("Nível", dict(Aluno.NivelCurso.choices).get),
-                    "reingressante": ("Reingressante", lambda v: "Sim" if v == "1" else "Não"),
-                    "ingresso_inicio": ("Ingresso de", None),
-                    "ingresso_fim": ("Ingresso até", None),
-                    "sem_matricula_periodo": ("Sem matrícula em", _nome_do_periodo),
-                },
-            ),
+            "filtros_ativos": _filtros_ativos(request, filtros_rotulos),
             "is_coordenador": _is_coordenador(request.user),
             "has_gestao_access": _has_gestao_access(request.user),
             "can_view_dashboard": _can_view_dashboard(request.user),
@@ -2673,6 +2747,67 @@ def alunos_view(request):
             "can_view_caixa": _can_view_caixa(request.user),
         },
     )
+
+
+def _resposta_xlsx_alunos_por_marco(linhas, marco, marco_label):
+    workbook = Workbook()
+    planilha = workbook.active
+    planilha.title = "Alunos"
+    planilha.append(
+        [
+            "Matrícula",
+            "Nome",
+            "E-mail",
+            "Polo",
+            "Nível",
+            "Ingresso",
+            "Orientador",
+            "Marco",
+            "Situação",
+            "Data limite",
+            "Prazo de reapresentação",
+            "Semestre do marco",
+            "Motivo",
+        ]
+    )
+    for celula in planilha[planilha.max_row]:
+        if isinstance(celula.value, str) and celula.value.startswith("="):
+            celula.data_type = "s"
+    for linha in linhas:
+        resultado = linha.resultado
+        planilha.append(
+            [
+                linha.aluno.matricula,
+                linha.aluno.nome,
+                linha.aluno.email,
+                linha.aluno.polo_atuacao.nome if linha.aluno.polo_atuacao else "",
+                linha.trajetoria.get_nivel_curso_display(),
+                linha.trajetoria.ingresso,
+                linha.trajetoria.orientador.nome if linha.trajetoria.orientador else "",
+                marco_label,
+                linha.situacao_display,
+                resultado.data_limite.strftime("%d/%m/%Y") if resultado.data_limite else "",
+                resultado.prazo_reapresentacao.strftime("%d/%m/%Y") if resultado.prazo_reapresentacao else "",
+                linha.semestre_marco,
+                resultado.motivo,
+            ]
+        )
+        for celula in planilha[planilha.max_row]:
+            if isinstance(celula.value, str) and celula.value.startswith("="):
+                celula.data_type = "s"
+    planilha.freeze_panes = "A2"
+    planilha.auto_filter.ref = planilha.dimensions
+    arquivo = BytesIO()
+    workbook.save(arquivo)
+    response = HttpResponse(
+        arquivo.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    data_exportacao = timezone.localdate().isoformat()
+    response["Content-Disposition"] = (
+        f'attachment; filename="alunos_por_marco_{marco}_{data_exportacao}.xlsx"'
+    )
+    return response
 
 
 def _linhas_trajetoria(trajetoria):

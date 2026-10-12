@@ -82,7 +82,7 @@ def _trajetorias_ativas(alunos):
             status=TrajetoriaAcademica.Status.ATIVA,
             nivel_curso__in=[Aluno.NivelCurso.MESTRADO, Aluno.NivelCurso.DOUTORADO],
         )
-        .select_related("aluno")
+        .select_related("aluno", "aluno__polo_atuacao", "orientador")
         .order_by("aluno_id", "-criado_em")
     )
     por_aluno = {}
