@@ -214,13 +214,16 @@ def calcular_situacao_defesa(
     )
 
 
-def resolver_data_limite(trajetoria):
+def resolver_data_limite(trajetoria, calendario=None):
     """Data limite do marco intermediário do aluno e de onde ela veio.
 
     Mestrado: vale a "Data limite do projeto" da trajetória, se preenchida;
     senão, a data do calendário para o semestre do projeto. Doutorado: vale
     a data do calendário para o quinto semestre. Sem nenhuma das duas,
     devolve (None, "").
+
+    Se receber o calendário já carregado ({(semestre, tipo): data}), não
+    consulta o banco.
     """
     from acompanhamento.models import MarcoCalendario
 
@@ -239,14 +242,17 @@ def resolver_data_limite(trajetoria):
 
     if not semestre:
         return None, ""
-    data = MarcoCalendario.data_limite_do(semestre, tipo)
+    if calendario is None:
+        data = MarcoCalendario.data_limite_do(semestre, tipo)
+    else:
+        data = calendario.get((semestre, tipo))
     return (data, ORIGEM_CALENDARIO) if data else (None, "")
 
 
-def calcular_situacao_trajetoria(trajetoria, data_referencia):
+def calcular_situacao_trajetoria(trajetoria, data_referencia, calendario=None):
     """Situação de uma trajetória no projeto/qualificação, lendo o cadastro."""
     nivel = MESTRADO if trajetoria.nivel_curso == "MESTRADO" else DOUTORADO
-    data_limite, origem = resolver_data_limite(trajetoria)
+    data_limite, origem = resolver_data_limite(trajetoria, calendario)
     apresentacoes = [
         Apresentacao(a.data_apresentacao, a.conceito)
         for a in trajetoria.apresentacoes_qualificacao.all()
@@ -259,3 +265,56 @@ def calcular_situacao_trajetoria(trajetoria, data_referencia):
         concluido_marcado=trajetoria.isQualificado,
     )
     return replace(resultado, origem_data_limite=origem)
+
+
+def calcular_situacao_defesa_trajetoria(trajetoria, data_referencia):
+    """Situação de uma trajetória na defesa, lendo o cadastro."""
+    nivel = MESTRADO if trajetoria.nivel_curso == "MESTRADO" else DOUTORADO
+    prorrogacao = sum(p.meses for p in trajetoria.prorrogacoes.all())
+    trancamento = sum(
+        (t.data_fim - t.data_inicio).days + 1 for t in trajetoria.trancamentos.all()
+    )
+    return calcular_situacao_defesa(
+        nivel=nivel,
+        mes_ingresso=trajetoria.data_ingresso,
+        prorrogacao_meses=prorrogacao,
+        data_referencia=data_referencia,
+        defesa_registrada=trajetoria.data_defesa is not None,
+        dias_trancamento=trancamento,
+    )
+
+
+def calcular_situacoes(trajetorias, data_referencia):
+    """Situação de várias trajetórias de uma vez, no marco e na defesa.
+
+    Carrega o calendário e os dados de todas as trajetórias em um número
+    fixo de consultas, que não cresce com a quantidade de alunos. Devolve
+    {id da trajetória: {"marco": Resultado, "defesa": Resultado}}.
+    Só mestrado e doutorado entram no cálculo; os demais níveis ficam
+    fora do cálculo.
+    """
+    from django.db.models import prefetch_related_objects
+
+    from acompanhamento.models import MarcoCalendario
+
+    trajetorias = list(trajetorias)
+    prefetch_related_objects(
+        trajetorias, "apresentacoes_qualificacao", "prorrogacoes", "trancamentos"
+    )
+    calendario = {
+        (m.semestre, m.tipo): m.data_limite for m in MarcoCalendario.objects.all()
+    }
+
+    situacoes = {}
+    for trajetoria in trajetorias:
+        if trajetoria.nivel_curso not in ("MESTRADO", "DOUTORADO"):
+            fora = Resultado(FORA_DO_CALCULO, motivo="Nível sem prazos acadêmicos.")
+            situacoes[trajetoria.pk] = {"marco": fora, "defesa": fora}
+            continue
+        situacoes[trajetoria.pk] = {
+            "marco": calcular_situacao_trajetoria(
+                trajetoria, data_referencia, calendario
+            ),
+            "defesa": calcular_situacao_defesa_trajetoria(trajetoria, data_referencia),
+        }
+    return situacoes
