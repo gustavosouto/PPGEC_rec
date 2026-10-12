@@ -9,6 +9,7 @@ Cada item é um par (título, nome da rota).
 
 TELAS = [
     ("Painel de Docentes", "acompanhamento:painel_docentes"),
+    ("Painel de Processos", "acompanhamento:painel_processos"),
     ("Carga de orientação", "coordenacao_dashboard"),
     ("Calendário de Marcos", "acompanhamento:calendario_marcos"),
 ]
