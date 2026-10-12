@@ -2,8 +2,11 @@
 
 Projeto de dissertação (mestrado) e qualificação (doutorado): a data
 limite é a da sessão. Quem não apresenta até ela tem uma única nova
-chance, em 3 meses (mestrado) ou 6 meses (doutorado). A defesa fica
-para a próxima etapa (calcular_situacao_defesa).
+chance, em 3 meses (mestrado) ou 6 meses (doutorado).
+
+Defesa: o prazo regimental termina no último dia do mês em que se
+completam 24 meses (mestrado) ou 48 meses (doutorado) do ingresso. O
+limite efetivo soma as prorrogações a esse prazo.
 """
 
 import calendar
@@ -24,6 +27,7 @@ ORIGEM_TRAJETORIA = "trajetoria"
 ORIGEM_CALENDARIO = "calendario"
 
 MESES_REAPRESENTACAO = {MESTRADO: 3, DOUTORADO: 6}
+MESES_PRAZO_DEFESA = {MESTRADO: 24, DOUTORADO: 48}
 CONCEITOS_APROVADOS = ("A", "B")
 
 
@@ -180,7 +184,28 @@ def calcular_situacao_defesa(
     defesa_registrada=False,
 ):
     """Defesa: limite efetivo = prazo regimental + prorrogações."""
-    raise NotImplementedError
+    if defesa_registrada:
+        return Resultado(FORA_DO_CALCULO, motivo="Defesa já registrada.")
+
+    # prazo regimental: último dia do mês, 24 ou 48 meses após o ingresso
+    fim = somar_meses(mes_ingresso, MESES_PRAZO_DEFESA[nivel])
+    ultimo_dia = calendar.monthrange(fim.year, fim.month)[1]
+    prazo_regimental = date(fim.year, fim.month, ultimo_dia)
+
+    # limite efetivo: soma as prorrogações mantendo o dia
+    data_limite = somar_meses(prazo_regimental, prorrogacao_meses)
+
+    if data_referencia <= data_limite:
+        return Resultado(
+            REGULAR,
+            data_limite=data_limite,
+            motivo=f"Defesa até {_formatar(data_limite)}.",
+        )
+    return Resultado(
+        IRREGULAR_SEM_CHANCE,
+        data_limite=data_limite,
+        motivo=f"Não defendeu até {_formatar(data_limite)}.",
+    )
 
 
 def resolver_data_limite(trajetoria):
@@ -228,4 +253,3 @@ def calcular_situacao_trajetoria(trajetoria, data_referencia):
         concluido_marcado=trajetoria.isQualificado,
     )
     return replace(resultado, origem_data_limite=origem)
-    
