@@ -1,0 +1,21 @@
+{% load l10n %}
+<section class="card">
+    <h2 class="section-title">{{ titulo }}</h2>
+    {% if barras %}
+        <ul class="activity-list">
+            {% for barra in barras %}
+                <li>
+                    <div>
+                        <strong>{{ barra.rotulo }}</strong>
+                        <div class="barra-progresso" role="img" aria-label="{{ barra.rotulo }}: {{ barra.total }}">
+                            <span style="width: {{ barra.largura|unlocalize }}%"></span>
+                        </div>
+                    </div>
+                    <span class="estado-item">{{ barra.total }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="estado-vazio-inline">{{ vazio }}</p>
+    {% endif %}
+</section>

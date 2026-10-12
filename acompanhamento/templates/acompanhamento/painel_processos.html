@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load l10n %}
+{% block title %}Painel de Processos | Coordenação{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="lista-cabecalho">
+        <div>
+            <h1 class="section-title">Painel de Processos</h1>
+            <p class="muted">Processos abertos no semestre {{ semestre }}.</p>
+        </div>
+    </div>
+    <form method="get" class="filtros"><div class="filtros-linha">
+        <div class="filtros-campo">
+            <label for="semestre">Semestre</label>
+            <select id="semestre" name="semestre">
+                {% for opcao in semestres %}
+                    <option value="{{ opcao }}" {% if opcao == semestre %}selected{% endif %}>{{ opcao }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="btn" type="submit">Filtrar</button>
+    </div></form>
+</section>
+
+<section class="metric-grid" aria-label="Totais de processos">
+    <article class="card metric-card">
+        <p class="metric-value">{{ total_processos }}</p>
+        <p class="metric-label">Processos abertos</p>
+    </article>
+    <article class="card metric-card {% if total_atrasados %}is-alerta{% endif %}">
+        <p class="metric-value">{{ total_atrasados }}</p>
+        <p class="metric-label">Em atraso</p>
+    </article>
+    <article class="card metric-card is-green">
+        {% if tempo_medio_dias is None %}
+            <p class="metric-value">Sem dados</p>
+            <p class="metric-label">Nenhum processo finalizado no semestre</p>
+        {% else %}
+            <p class="metric-value">{{ tempo_medio_dias|floatformat:1 }}</p>
+            <p class="metric-label">Dias, em média, até a finalização</p>
+        {% endif %}
+    </article>
+</section>
+
+{% include "acompanhamento/_barras.html" with titulo="Por tipo" barras=barras_tipo vazio="Nenhum processo aberto no semestre." %}
+{% include "acompanhamento/_barras.html" with titulo="Por status" barras=barras_status vazio="Nenhum processo aberto no semestre." %}
+{% include "acompanhamento/_barras.html" with titulo="Abertos por mês" barras=barras_mes vazio="Nenhum processo aberto no semestre." %}
+{% endblock %}
