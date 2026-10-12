@@ -7,7 +7,7 @@ para a próxima etapa (calcular_situacao_defesa).
 """
 
 import calendar
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 
 REGULAR = "regular"
@@ -19,6 +19,9 @@ FORA_DO_CALCULO = "fora_do_calculo"
 
 MESTRADO = "mestrado"
 DOUTORADO = "doutorado"
+
+ORIGEM_TRAJETORIA = "trajetoria"
+ORIGEM_CALENDARIO = "calendario"
 
 MESES_REAPRESENTACAO = {MESTRADO: 3, DOUTORADO: 6}
 CONCEITOS_APROVADOS = ("A", "B")
@@ -37,6 +40,7 @@ class Resultado:
     prazo_reapresentacao: date | None = None
     motivo: str = ""
     avisos: list = field(default_factory=list)
+    origem_data_limite: str = ""
 
 
 def somar_meses(data, meses):
@@ -172,4 +176,51 @@ def calcular_situacao_defesa(
 ):
     """Defesa: limite efetivo = prazo regimental + prorrogações."""
     raise NotImplementedError
+
+
+def resolver_data_limite(trajetoria):
+    """Data limite do marco intermediário do aluno e de onde ela veio.
+
+    Mestrado: vale a "Data limite do projeto" da trajetória, se preenchida;
+    senão, a data do calendário para o semestre do projeto. Doutorado: vale
+    a data do calendário para o quinto semestre. Sem nenhuma das duas,
+    devolve (None, "").
+    """
+    from acompanhamento.models import MarcoCalendario
+
+    if trajetoria.nivel_curso == "MESTRADO":
+        if trajetoria.data_limite_qualificacao:
+            return trajetoria.data_limite_qualificacao, ORIGEM_TRAJETORIA
+        semestre = trajetoria.prazo_qualificacao
+        tipo = MarcoCalendario.TipoMarco.PROJETO_DISSERTACAO
+    elif trajetoria.nivel_curso == "DOUTORADO":
+        semestre = (
+            trajetoria.prazo_qualificacao or trajetoria.prazo_qualificacao_regimental
+        )
+        tipo = MarcoCalendario.TipoMarco.QUALIFICACAO
+    else:
+        return None, ""
+
+    if not semestre:
+        return None, ""
+    data = MarcoCalendario.data_limite_do(semestre, tipo)
+    return (data, ORIGEM_CALENDARIO) if data else (None, "")
+
+
+def calcular_situacao_trajetoria(trajetoria, data_referencia):
+    """Situação de uma trajetória no projeto/qualificação, lendo o cadastro."""
+    nivel = MESTRADO if trajetoria.nivel_curso == "MESTRADO" else DOUTORADO
+    data_limite, origem = resolver_data_limite(trajetoria)
+    apresentacoes = [
+        Apresentacao(a.data_apresentacao, a.conceito)
+        for a in trajetoria.apresentacoes_qualificacao.all()
+    ]
+    resultado = calcular_situacao_marco(
+        nivel=nivel,
+        data_limite=data_limite,
+        apresentacoes=apresentacoes,
+        data_referencia=data_referencia,
+        concluido_marcado=trajetoria.isQualificado,
+    )
+    return replace(resultado, origem_data_limite=origem)
     
