@@ -31,6 +31,8 @@ class ServicoPainelDocentesTests(TestCase):
         )
 
     def test_percentuais_de_permanentes_e_colaboradores_somam_cem(self):
+        Docente.objects.update(is_active=False)
+
         for indice in range(3):
             self._criar_docente(
                 f"Docente permanente {indice}",
@@ -49,6 +51,8 @@ class ServicoPainelDocentesTests(TestCase):
         self.assertEqual(resultado["percentual_colaboradores"], Decimal("25.0"))
 
     def test_percentuais_sao_zero_sem_docentes_ativos(self):
+        Docente.objects.update(is_active=False)
+
         resultado = calcular_painel_docentes()
 
         self.assertEqual(resultado["total_ativos"], 0)
