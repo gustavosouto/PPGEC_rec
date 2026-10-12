@@ -33,13 +33,14 @@ def marco(nivel, data_limite, apresentacoes, referencia, concluido=False):
     )
 
 
-def defesa(nivel, ingresso, prorrogacao, referencia, defendeu=False):
+def defesa(nivel, ingresso, prorrogacao, referencia, defendeu=False, trancamento=0):
     return calcular_situacao_defesa(
         nivel=nivel,
         mes_ingresso=ingresso,
         prorrogacao_meses=prorrogacao,
         data_referencia=referencia,
         defesa_registrada=defendeu,
+        dias_trancamento=trancamento,
     )
 
 
@@ -218,7 +219,7 @@ class QualificacaoTests(SimpleTestCase):
 
 
 class DefesaTests(SimpleTestCase):
-    """Casos 14 a 19."""
+    """Casos 14 a 19, 25 e 29, e aluno sem mês de ingresso."""
 
     def test_caso_14_mestrado_dentro_do_prazo_e_regular(self):
         r = defesa(MESTRADO, date(2025, 3, 1), 0, date(2027, 3, 15))
@@ -249,3 +250,19 @@ class DefesaTests(SimpleTestCase):
             MESTRADO, date(2025, 3, 1), 0, date(2030, 1, 1), defendeu=True
         )
         self.assertEqual(r.situacao, FORA_DO_CALCULO)
+
+    def test_caso_25_ultimo_dia_do_limite_ainda_e_regular(self):
+        r = defesa(MESTRADO, date(2025, 3, 1), 0, date(2027, 3, 31))
+        self.assertEqual(r.situacao, REGULAR)
+        self.assertEqual(r.data_limite, date(2027, 3, 31))
+
+    def test_caso_29_trancamento_soma_dias_ao_limite(self):
+        r = defesa(
+            MESTRADO, date(2025, 3, 1), 0, date(2027, 8, 31), trancamento=153
+        )
+        self.assertEqual(r.situacao, REGULAR)
+        self.assertEqual(r.data_limite, date(2027, 8, 31))
+
+    def test_sem_mes_de_ingresso_e_sem_prazo(self):
+        r = defesa(MESTRADO, None, 0, date(2027, 1, 1))
+        self.assertEqual(r.situacao, SEM_PRAZO)
