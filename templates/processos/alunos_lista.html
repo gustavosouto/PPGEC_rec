@@ -71,32 +71,34 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="filtros-campo filtros-campo-escolha">
-                    <label for="id_marco">Marco acadêmico</label>
-                    <select id="id_marco" name="marco">
-                        <option value="">Não filtrar por marco</option>
-                        {% for value, label in marcos %}
-                            <option value="{{ value }}" {% if filtro_marco == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filtros-campo filtros-campo-escolha">
-                    <label for="id_situacao_marco">Situação no marco</label>
-                    <select id="id_situacao_marco" name="situacao_marco">
-                        <option value="">Todas</option>
-                        {% for value, label in situacoes_marco %}
-                            <option value="{{ value }}" {% if filtro_situacao_marco == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filtros-campo filtros-campo-data">
-                    <label for="id_semestre_marco">Semestre do marco</label>
-                    <input id="id_semestre_marco" type="text" name="semestre_marco"
-                           value="{{ filtro_semestre_marco }}" placeholder="2026.2" inputmode="numeric">
-                </div>
+                {% if acompanhamento_ativo %}
+                    <div class="filtros-campo filtros-campo-escolha">
+                        <label for="id_marco">Marco acadêmico</label>
+                        <select id="id_marco" name="marco">
+                            <option value="">Não filtrar por marco</option>
+                            {% for value, label in marcos %}
+                                <option value="{{ value }}" {% if filtro_marco == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filtros-campo filtros-campo-escolha">
+                        <label for="id_situacao_marco">Situação no marco</label>
+                        <select id="id_situacao_marco" name="situacao_marco">
+                            <option value="">Todas</option>
+                            {% for value, label in situacoes_marco %}
+                                <option value="{{ value }}" {% if filtro_situacao_marco == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filtros-campo filtros-campo-data">
+                        <label for="id_semestre_marco">Semestre do marco</label>
+                        <input id="id_semestre_marco" type="text" name="semestre_marco"
+                               value="{{ filtro_semestre_marco }}" placeholder="2026.2" inputmode="numeric">
+                    </div>
+                {% endif %}
             </div>
         </details>
-        {% if filtro_marco %}
+        {% if acompanhamento_ativo and filtro_marco %}
             <div class="filtros-acoes">
                 <button class="btn" type="submit" name="exportar" value="xlsx">Baixar em Excel</button>
             </div>
