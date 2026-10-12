@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Calendário de Marcos</h2>
+
+  <!-- Formulário de Cadastro / Edição -->
+  <div class="card my-4">
+    <div class="card-header">
+      {% if marco_edicao %}Editar Marco{% else %}Cadastrar Novo Marco{% endif %}
+    </div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        {% if marco_edicao %}
+          <a href="{% url 'acompanhamento:calendario_marcos' %}" class="btn btn-secondary">Cancelar</a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <!-- Tabela de Listagem -->
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Semestre</th>
+        <th>Data Limite</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for marco in marcos %}
+        <tr>
+          <td>{{ marco.tipo }}</td>
+          <td>{{ marco.semestre }}</td>
+          <td>{{ marco.data_limite }}</td>
+          <td>
+            <a href="?editar={{ marco.id }}" class="btn btn-sm btn-outline-primary">Editar</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="4" class="text-center">Nenhum marco cadastrado.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
