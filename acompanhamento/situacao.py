@@ -11,8 +11,11 @@ de trancamento.
 """
 
 import calendar
+import logging
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
+
+logger = logging.getLogger(__name__)
 
 REGULAR = "regular"
 IRREGULAR_COM_CHANCE = "irregular_com_chance"
@@ -20,6 +23,7 @@ IRREGULAR_SEM_CHANCE = "irregular_sem_chance"
 CUMPRIDO = "cumprido"
 SEM_PRAZO = "sem_prazo"
 FORA_DO_CALCULO = "fora_do_calculo"
+NAO_CALCULADO = "nao_calculado"
 
 MESTRADO = "mestrado"
 DOUTORADO = "doutorado"
@@ -311,10 +315,21 @@ def calcular_situacoes(trajetorias, data_referencia):
             fora = Resultado(FORA_DO_CALCULO, motivo="Nível sem prazos acadêmicos.")
             situacoes[trajetoria.pk] = {"marco": fora, "defesa": fora}
             continue
-        situacoes[trajetoria.pk] = {
-            "marco": calcular_situacao_trajetoria(
-                trajetoria, data_referencia, calendario
-            ),
-            "defesa": calcular_situacao_defesa_trajetoria(trajetoria, data_referencia),
-        }
+        # Um cadastro com dado inesperado não pode derrubar a lista inteira:
+        # a falha fica registrada no log e só aquela trajetória sai sem cálculo.
+        try:
+            situacoes[trajetoria.pk] = {
+                "marco": calcular_situacao_trajetoria(
+                    trajetoria, data_referencia, calendario
+                ),
+                "defesa": calcular_situacao_defesa_trajetoria(
+                    trajetoria, data_referencia
+                ),
+            }
+        except Exception:
+            logger.exception(
+                "Falha ao calcular a situação da trajetória %s.", trajetoria.pk
+            )
+            falha = Resultado(NAO_CALCULADO, motivo="Não foi possível calcular.")
+            situacoes[trajetoria.pk] = {"marco": falha, "defesa": falha}
     return situacoes
