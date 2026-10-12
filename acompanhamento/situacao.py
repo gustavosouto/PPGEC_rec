@@ -6,12 +6,13 @@ chance, em 3 meses (mestrado) ou 6 meses (doutorado).
 
 Defesa: o prazo regimental termina no último dia do mês em que se
 completam 24 meses (mestrado) ou 48 meses (doutorado) do ingresso. O
-limite efetivo soma as prorrogações a esse prazo.
+limite efetivo soma a esse prazo as prorrogações (em meses) e os dias
+de trancamento.
 """
 
 import calendar
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, timedelta
 
 REGULAR = "regular"
 IRREGULAR_COM_CHANCE = "irregular_com_chance"
@@ -182,18 +183,23 @@ def calcular_situacao_defesa(
     prorrogacao_meses,
     data_referencia,
     defesa_registrada=False,
+    dias_trancamento=0,
 ):
-    """Defesa: limite efetivo = prazo regimental + prorrogações."""
+    """Defesa: limite efetivo = prazo regimental + prorrogações + trancamento."""
     if defesa_registrada:
         return Resultado(FORA_DO_CALCULO, motivo="Defesa já registrada.")
+
+    if mes_ingresso is None:
+        return Resultado(SEM_PRAZO, motivo="Não há mês de ingresso cadastrado.")
 
     # prazo regimental: último dia do mês, 24 ou 48 meses após o ingresso
     fim = somar_meses(mes_ingresso, MESES_PRAZO_DEFESA[nivel])
     ultimo_dia = calendar.monthrange(fim.year, fim.month)[1]
     prazo_regimental = date(fim.year, fim.month, ultimo_dia)
 
-    # limite efetivo: soma as prorrogações mantendo o dia
+    # limite efetivo: soma as prorrogações (meses) e o trancamento (dias)
     data_limite = somar_meses(prazo_regimental, prorrogacao_meses)
+    data_limite = data_limite + timedelta(days=dias_trancamento)
 
     if data_referencia <= data_limite:
         return Resultado(
