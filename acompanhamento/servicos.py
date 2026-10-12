@@ -25,9 +25,7 @@ def calcular_painel_docentes(somente_permanentes=False):
         percentual_permanentes = (
             Decimal(total_permanentes) * Decimal("100.0") / Decimal(total_ativos)
         ).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
-        percentual_colaboradores = (
-            Decimal(total_colaboradores) * Decimal("100.0") / Decimal(total_ativos)
-        ).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+        percentual_colaboradores = Decimal("100.0") - percentual_permanentes
     else:
         percentual_permanentes = Decimal("0.0")
         percentual_colaboradores = Decimal("0.0")
