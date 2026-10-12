@@ -1,21 +1,15 @@
-<<<<<<< HEAD
 from django.shortcuts import render, redirect, get_object_or_404
-=======
 from django.contrib import messages
 from django.shortcuts import render
->>>>>>> origin/develop
 from django.urls import reverse
 from django.utils import timezone
 
 from .decoradores import tela_do_modulo
 from .telas import TELAS
-<<<<<<< HEAD
 from .servicos import calcular_painel_docentes
 from .models import MarcoCalendario
 from .forms import MarcoCalendarioForm
-=======
 from .servicos import calcular_painel_docentes, calcular_painel_processos
->>>>>>> origin/develop
 
 @tela_do_modulo
 def inicio(request):
@@ -31,7 +25,6 @@ def painel_docentes(request):
     contexto["somente_permanentes"] = somente_permanentes
     return render(request, "acompanhamento/painel_docentes.html", contexto)
 
-<<<<<<< HEAD
 @tela_do_modulo
 def calendario_marcos(request):
     """Lista os marcos do calendário e permite cadastrar/editar."""
@@ -58,7 +51,6 @@ def calendario_marcos(request):
         "marco_edicao": marco_edicao,
     }
     return render(request, "acompanhamento/calendario_marcos.html", contexto)
-=======
 
 def _semestres_recentes(quantidade=6):
     """Semestre atual e os anteriores, do mais recente para o mais antigo."""
@@ -110,4 +102,3 @@ def painel_processos(request):
         }
     )
     return render(request, "acompanhamento/painel_processos.html", contexto)
->>>>>>> origin/develop
