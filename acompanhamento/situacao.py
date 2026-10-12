@@ -78,6 +78,11 @@ def calcular_situacao_marco(
                 "Marcação de projeto/qualificação concluído sem apresentação "
                 "aprovada registrada. Conferir o cadastro."
             )
+        elif not concluido_marcado:
+            avisos.append(
+                "Apresentação aprovada registrada, mas a trajetória não está "
+                "marcada como projeto/qualificação concluído. Conferir o cadastro."
+            )
         return Resultado(
             CUMPRIDO,
             data_limite=data_limite,
