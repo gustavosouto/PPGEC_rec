@@ -21,6 +21,15 @@ def calcular_painel_docentes(somente_permanentes=False):
     total_externos = docentes_ativos.filter(externo=True).count()
     total_internos = docentes_ativos.filter(externo=False).count()
 
+    if total_ativos > 0:
+        percentual_permanentes = (
+            Decimal(total_permanentes) * Decimal("100.0") / Decimal(total_ativos)
+        ).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+        percentual_colaboradores = Decimal("100.0") - percentual_permanentes
+    else:
+        percentual_permanentes = Decimal("0.0")
+        percentual_colaboradores = Decimal("0.0")
+
     # Base para a distribuição (aplicando o filtro opcional se solicitado)
     base_distribuicao = docentes_ativos
     if somente_permanentes:
@@ -98,6 +107,8 @@ def calcular_painel_docentes(somente_permanentes=False):
         "total_ativos": total_ativos,
         "total_permanentes": total_permanentes,
         "total_colaboradores": total_colaboradores,
+        "percentual_permanentes": percentual_permanentes,
+        "percentual_colaboradores": percentual_colaboradores,
         "total_internos": total_internos,
         "total_externos": total_externos,
         "total_distribuicao": total_distribuicao,
