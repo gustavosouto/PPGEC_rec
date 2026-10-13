@@ -71,7 +71,8 @@ class CalculoEmLoteTests(TestCase):
         self.assertEqual(len(situacoes), 50)
         situacao = next(iter(situacoes.values()))
         self.assertEqual(situacao["marco"].situacao, REGULAR)
-        self.assertEqual(situacao["marco"].data_limite, date(2026, 6, 20))
+        # 20/06/2026 do calendário + 10 dias de trancamento
+        self.assertEqual(situacao["marco"].data_limite, date(2026, 6, 30))
         # 31/03/2027 + 1 mês de prorrogação + 10 dias de trancamento
         self.assertEqual(situacao["defesa"].situacao, REGULAR)
         self.assertEqual(situacao["defesa"].data_limite, date(2027, 5, 10))

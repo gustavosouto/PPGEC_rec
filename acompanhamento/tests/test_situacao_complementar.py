@@ -276,3 +276,45 @@ class ConceitoTests(SimpleTestCase):
         r = self.marco([Apresentacao(date(2026, 12, 10), "A")], date(2026, 11, 1))
         self.assertEqual(r.situacao, IRREGULAR_COM_CHANCE)
         self.assertEqual(r.prazo_reapresentacao, date(2026, 12, 20))
+
+
+class TrancamentoNoMarcoIntermediarioTests(SimpleTestCase):
+    """O trancamento estende também o prazo do projeto e da qualificação."""
+
+    def test_caso_24_trancamento_estende_a_data_limite_do_projeto(self):
+        # 20/09/2026 + 153 dias de trancamento (01/08 a 31/12/2026) = 20/02/2027
+        t = trajetoria(
+            "MESTRADO",
+            data_limite=date(2026, 9, 20),
+            trancamentos=[trancamento(date(2026, 8, 1), date(2026, 12, 31))],
+        )
+        r = calcular_situacao_trajetoria(t, date(2027, 1, 5), calendario={})
+        self.assertEqual(r.situacao, REGULAR)
+        self.assertEqual(r.data_limite, date(2027, 2, 20))
+
+    def test_reapresentacao_conta_a_partir_da_data_limite_estendida(self):
+        # Limite estendido para 20/02/2027: a reapresentação vai até 20/05/2027.
+        t = trajetoria(
+            "MESTRADO",
+            data_limite=date(2026, 9, 20),
+            trancamentos=[trancamento(date(2026, 8, 1), date(2026, 12, 31))],
+        )
+        r = calcular_situacao_trajetoria(t, date(2027, 3, 1), calendario={})
+        self.assertEqual(r.situacao, IRREGULAR_COM_CHANCE)
+        self.assertEqual(r.prazo_reapresentacao, date(2027, 5, 20))
+
+    def test_trancamento_estende_a_data_do_calendario_no_doutorado(self):
+        t = trajetoria(
+            "DOUTORADO",
+            prazo="2028.1",
+            trancamentos=[trancamento(date(2027, 3, 1), date(2027, 3, 10))],
+        )
+        calendario = {("2028.1", QUALIFICACAO): date(2028, 6, 7)}
+        r = calcular_situacao_trajetoria(t, date(2028, 6, 15), calendario=calendario)
+        self.assertEqual(r.situacao, REGULAR)
+        self.assertEqual(r.data_limite, date(2028, 6, 17))
+
+    def test_sem_trancamento_a_data_limite_nao_muda(self):
+        t = trajetoria("MESTRADO", data_limite=date(2026, 9, 20))
+        r = calcular_situacao_trajetoria(t, date(2026, 9, 1), calendario={})
+        self.assertEqual(r.data_limite, date(2026, 9, 20))
