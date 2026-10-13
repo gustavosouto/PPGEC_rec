@@ -235,10 +235,11 @@ class DefesaTests(SimpleTestCase):
         r = defesa(MESTRADO, date(2025, 3, 1), 0, date(2027, 4, 1))
         self.assertEqual(r.situacao, IRREGULAR_SEM_CHANCE)
 
-    def test_caso_17_prorrogacao_mantem_o_dia_do_mes(self):
-        r = defesa(MESTRADO, date(2025, 2, 1), 3, date(2027, 5, 20))
+    def test_caso_17_prorrogacao_vale_ate_o_fim_do_mes(self):
+        # 28/02/2027 + 3 meses: o prazo é maio de 2027, até o dia 31.
+        r = defesa(MESTRADO, date(2025, 2, 1), 3, date(2027, 5, 31))
         self.assertEqual(r.situacao, REGULAR)
-        self.assertEqual(r.data_limite, date(2027, 5, 28))
+        self.assertEqual(r.data_limite, date(2027, 5, 31))
 
     def test_caso_18_doutorado_tem_48_meses(self):
         r = defesa(DOUTORADO, date(2026, 3, 1), 0, date(2030, 1, 1))
