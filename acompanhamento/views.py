@@ -1,12 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
-
 from .decoradores import tela_do_modulo
 from .telas import TELAS
-from .servicos import calcular_painel_docentes
 from .models import MarcoCalendario
 from .forms import MarcoCalendarioForm
 from .servicos import calcular_painel_docentes, calcular_painel_processos
