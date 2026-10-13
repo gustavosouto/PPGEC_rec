@@ -253,10 +253,22 @@ def resolver_data_limite(trajetoria, calendario=None):
     return (data, ORIGEM_CALENDARIO) if data else (None, "")
 
 
+def _dias_trancados(trajetoria):
+    """Dias de trancamento da trajetória, contando o primeiro e o último dia,
+    como em TrajetoriaAcademica.dias_trancados."""
+    return sum(
+        (t.data_fim - t.data_inicio).days + 1 for t in trajetoria.trancamentos.all()
+    )
+
+
 def calcular_situacao_trajetoria(trajetoria, data_referencia, calendario=None):
     """Situação de uma trajetória no projeto/qualificação, lendo o cadastro."""
     nivel = MESTRADO if trajetoria.nivel_curso == "MESTRADO" else DOUTORADO
     data_limite, origem = resolver_data_limite(trajetoria, calendario)
+    # O trancamento estende também o prazo do projeto e da qualificação, e
+    # não só o da defesa, como confirmou a secretaria em 12/10/2026.
+    if data_limite is not None:
+        data_limite += timedelta(days=_dias_trancados(trajetoria))
     apresentacoes = [
         Apresentacao(a.data_apresentacao, a.conceito)
         for a in trajetoria.apresentacoes_qualificacao.all()
@@ -275,16 +287,13 @@ def calcular_situacao_defesa_trajetoria(trajetoria, data_referencia):
     """Situação de uma trajetória na defesa, lendo o cadastro."""
     nivel = MESTRADO if trajetoria.nivel_curso == "MESTRADO" else DOUTORADO
     prorrogacao = sum(p.meses for p in trajetoria.prorrogacoes.all())
-    trancamento = sum(
-        (t.data_fim - t.data_inicio).days + 1 for t in trajetoria.trancamentos.all()
-    )
     return calcular_situacao_defesa(
         nivel=nivel,
         mes_ingresso=trajetoria.data_ingresso,
         prorrogacao_meses=prorrogacao,
         data_referencia=data_referencia,
         defesa_registrada=trajetoria.data_defesa is not None,
-        dias_trancamento=trancamento,
+        dias_trancamento=_dias_trancados(trajetoria),
     )
 
 

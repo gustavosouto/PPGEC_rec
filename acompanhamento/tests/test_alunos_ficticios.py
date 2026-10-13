@@ -40,7 +40,9 @@ ESPERADO = [
      "projeto aprovado antes do limite"),
     (8, "MESTRADO", "ATIVA", IRREGULAR_SEM_CHANCE, REGULAR,
      "apresentou depois do limite com conceito C"),
-    (9, "MESTRADO", "ATIVA", IRREGULAR_COM_CHANCE, REGULAR,
+    # Os 30 dias de trancamento também empurram a data limite do projeto,
+    # que passou 30 dias antes da referência e agora cai nela.
+    (9, "MESTRADO", "ATIVA", REGULAR, REGULAR,
      "defesa salva por prorrogação e trancamento"),
     # O cálculo não filtra por status: trancado e desligado saem calculados.
     # Quem os tira da lista é a tela de alunos, não o cálculo.
