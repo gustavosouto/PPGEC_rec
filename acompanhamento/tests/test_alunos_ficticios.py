@@ -109,8 +109,9 @@ class AlunosFicticiosSituacaoTests(TestCase):
         trajetoria = self.trajetorias[8]
         defesa = self.resultados[trajetoria.pk]["defesa"]
 
-        # prazo regimental 30/09/2026 + 3 meses + 30 dias de trancamento
-        self.assertEqual(defesa.data_limite, date(2027, 1, 29))
+        # prazo regimental 30/09/2026 + 3 meses (até o fim de dezembro,
+        # 31/12/2026) + 30 dias de trancamento
+        self.assertEqual(defesa.data_limite, date(2027, 1, 30))
 
         # sem as extensões, o mesmo aluno estaria atrasado
         sem_extensoes = calcular_situacao_defesa(

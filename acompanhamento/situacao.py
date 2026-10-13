@@ -201,8 +201,13 @@ def calcular_situacao_defesa(
     ultimo_dia = calendar.monthrange(fim.year, fim.month)[1]
     prazo_regimental = date(fim.year, fim.month, ultimo_dia)
 
-    # limite efetivo: soma as prorrogações (meses) e o trancamento (dias)
-    data_limite = somar_meses(prazo_regimental, prorrogacao_meses)
+    # limite efetivo: soma as prorrogações (meses) e o trancamento (dias).
+    # A prorrogação é contada em meses e vale até o fim do mês em que termina,
+    # como respondeu a secretaria em 12/10/2026: ingresso em fevereiro de 2025
+    # com 3 meses de prorrogação vai até maio de 2027, e não até o dia 28.
+    fim_prorrogacao = somar_meses(prazo_regimental, prorrogacao_meses)
+    ultimo_dia = calendar.monthrange(fim_prorrogacao.year, fim_prorrogacao.month)[1]
+    data_limite = date(fim_prorrogacao.year, fim_prorrogacao.month, ultimo_dia)
     data_limite = data_limite + timedelta(days=dias_trancamento)
 
     if data_referencia <= data_limite:
