@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Acompanhamento | Coordenação{% endblock %}
+{% block content %}
+<section class="card">
+    <h1 class="section-title">Acompanhamento</h1>
+    {% if telas %}
+    <ul>
+        {% for tela in telas %}
+        <li><a href="{{ tela.endereco }}">{{ tela.titulo }}</a></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>Ainda não há telas disponíveis.</p>
+    {% endif %}
+</section>
+{% endblock %}
