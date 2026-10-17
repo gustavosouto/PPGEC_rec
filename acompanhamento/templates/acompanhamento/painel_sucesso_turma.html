@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Painel de Sucesso por Turma | AcadFlow{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1 class="section-title">Painel de Sucesso por Turma</h1>
+
+  <!-- Filtro por Nível -->
+  <form method="get" style="margin-bottom: 2rem;">
+    <label for="nivel">Nível:</label>
+    <select name="nivel" id="nivel" onchange="this.form.submit()">
+      <option value="TODOS" {% if nivel_selecionado == "TODOS" %}selected{% endif %}>Todos os Níveis</option>
+      <option value="MESTRADO" {% if nivel_selecionado == "MESTRADO" %}selected{% endif %}>Mestrado</option>
+      <option value="DOUTORADO" {% if nivel_selecionado == "DOUTORADO" %}selected{% endif %}>Doutorado</option>
+    </select>
+  </form>
+
+  <!-- Listagem de Turmas (da mais recente para a mais antiga) -->
+  {% for turma in turmas %}
+    <div style="border: 1px solid #ccc; padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
+      <h3>Turma {{ turma.nome }} ({{ turma.semestre }})</h3>
+
+      <!-- Alerta para turmas anteriores a 2026.2 -->
+      {% if turma.semestre < "2026.2" %}
+        <p style="color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 0.5rem; border-radius: 4px;">
+          ⚠️ <strong>Aviso:</strong> Esta turma é anterior a 2026.2 e possui dados limitados no sistema.
+        </p>
+      {% endif %}
+
+      <!-- Gráfico / Barras de Indicadores -->
+      <div class="barras-container" style="margin-top: 1rem;">
+        <!-- Inserir aqui a estrutura visual de barras idêntica ao painel de docentes -->
+      </div>
+    </div>
+  {% empty %}
+    <p>Nenhuma turma encontrada.</p>
+  {% endfor %}
+</section>
+{% endblock %}

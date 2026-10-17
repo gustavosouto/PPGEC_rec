@@ -99,3 +99,16 @@ def painel_processos(request):
         }
     )
     return render(request, "acompanhamento/painel_processos.html", contexto)
+
+@tela_do_modulo
+def painel_sucesso_turma(request):
+    nivel_selecionado = request.GET.get("nivel", "TODOS")
+    
+    # Lista/estruturas de dados das turmas
+    turmas = [] 
+    
+    contexto = {
+        "nivel_selecionado": nivel_selecionado,
+        "turmas": turmas,
+    }
+    return render(request, "acompanhamento/painel_sucesso_turma.html", contexto)
