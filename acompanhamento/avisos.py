@@ -23,6 +23,7 @@ from acompanhamento.models import AvisoIrregularidade
 from acompanhamento.situacao import (
     IRREGULAR_COM_CHANCE,
     IRREGULAR_SEM_CHANCE,
+    NAO_CALCULADO,
     calcular_situacoes,
 )
 from processos.models import Aluno, Setor, User
@@ -73,6 +74,11 @@ def atualizar_avisos(data_referencia=None):
 
             # Continua atrasado do mesmo jeito: o aviso já existe.
             if aberto and aberto.situacao == situacao:
+                continue
+
+            # Não deu para calcular hoje: o aviso aberto fica como está, senão
+            # o aluno voltaria como novo no e-mail de amanhã.
+            if situacao == NAO_CALCULADO:
                 continue
 
             # Saiu do atraso ou mudou de situação: o aviso antigo acaba.
