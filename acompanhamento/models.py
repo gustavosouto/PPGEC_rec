@@ -4,6 +4,7 @@ from django.conf import settings
 
 from processos.models import Aluno, TrajetoriaAcademica
 
+
 class MarcoCalendario(models.Model):
     """Data da sessão de um marco acadêmico em um semestre.
 
@@ -76,7 +77,8 @@ class MarcoCalendario(models.Model):
                 raise ValidationError(
                     {"data_limite": "A data limite deve estar dentro do semestre informado."}
                 )
-                
+
+
 class AvisoIrregularidade(models.Model):
     """Aviso de que um aluno ficou atrasado num marco.
 
