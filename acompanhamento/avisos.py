@@ -3,7 +3,14 @@
 Calcula a situação de todos os alunos ativos, guarda um aviso para quem
 ficou atrasado e manda um e-mail só com os avisos novos para a Secretaria
 PPGEC e a Coordenação PPG. Sem aviso novo, nenhum e-mail sai.
+
+O aviso não se perde: se o envio falha (depois de TENTATIVAS_ENVIO
+tentativas) ou se ninguém está nos dois setores, o aviso continua sem
+data de envio e entra no e-mail do dia seguinte.
 """
+
+import logging
+from time import sleep
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -24,11 +31,20 @@ ATRASADO = (IRREGULAR_COM_CHANCE, IRREGULAR_SEM_CHANCE)
 MARCOS = (AvisoIrregularidade.Marco.PROJETO_QUALIFICACAO, AvisoIrregularidade.Marco.DEFESA)
 SETORES_AVISADOS = (Setor.NOME_SECRETARIA, Setor.NOME_COORDENACAO)
 
+TENTATIVAS_ENVIO = 3
+PAUSA_ENTRE_TENTATIVAS = 30  # segundos
+
+logger = logging.getLogger(__name__)
+
 
 def rodar_aviso_diario(data_referencia=None):
-    """Atualiza os avisos e manda o e-mail do dia."""
+    """Atualiza os avisos e manda o e-mail do dia.
+
+    O e-mail leva os avisos novos e também os que ficaram pendentes de dias
+    anteriores (envio que falhou ou sem destinatário).
+    """
     novos = atualizar_avisos(data_referencia)
-    enviados = enviar_email(novos)
+    enviados = enviar_email(avisos_pendentes())
     return {"avisos_novos": len(novos), "emails_enviados": enviados}
 
 
@@ -94,29 +110,69 @@ def destinatarios():
     return sorted(emails)
 
 
+def avisos_pendentes():
+    """Avisos abertos que ainda não foram enviados por e-mail."""
+    return list(
+        AvisoIrregularidade.objects.filter(
+            encerrado_em__isnull=True, enviado_em__isnull=True
+        )
+        .select_related("trajetoria__aluno")
+        .order_by("trajetoria__aluno__nome", "marco")
+    )
+
+
 def enviar_email(avisos):
-    """Manda um e-mail com os avisos. Devolve 1 se enviou e 0 se não."""
+    """Manda um e-mail com os avisos. Devolve 1 se enviou e 0 se não.
+
+    Se o envio falhar, tenta de novo até TENTATIVAS_ENVIO vezes. Se continuar
+    falhando, ou se não houver destinatário, os avisos ficam pendentes.
+    """
     if not avisos:
         return 0
     emails = destinatarios()
     if not emails:
+        logger.warning(
+            "Aviso de irregularidade sem destinatário: %d aviso(s) ficam "
+            "pendentes para o próximo dia.",
+            len(avisos),
+        )
         return 0
 
     html = render_to_string(
         "acompanhamento/emails/aviso_irregularidade.html",
         {"avisos": avisos, "site_url": settings.SITE_URL},
     )
-    send_mail(
-        subject=f"[PPGEC] {len(avisos)} aluno(s) com prazo vencido",
-        message="",
-        from_email=None,
-        recipient_list=emails,
-        html_message=html,
-        fail_silently=False,
-    )
 
-    agora = timezone.now()
-    for aviso in avisos:
-        aviso.enviado_em = agora
-        aviso.save(update_fields=["enviado_em"])
-    return 1
+    for tentativa in range(1, TENTATIVAS_ENVIO + 1):
+        try:
+            send_mail(
+                subject=f"[PPGEC] {len(avisos)} aluno(s) com prazo vencido",
+                message="",
+                from_email=None,
+                recipient_list=emails,
+                html_message=html,
+                fail_silently=False,
+            )
+        except Exception:
+            logger.warning(
+                "Falha ao enviar o aviso de irregularidade (tentativa %d de %d).",
+                tentativa,
+                TENTATIVAS_ENVIO,
+                exc_info=True,
+            )
+            if tentativa < TENTATIVAS_ENVIO:
+                sleep(PAUSA_ENTRE_TENTATIVAS)
+            continue
+
+        AvisoIrregularidade.objects.filter(
+            pk__in=[aviso.pk for aviso in avisos]
+        ).update(enviado_em=timezone.now())
+        return 1
+
+    logger.error(
+        "Aviso de irregularidade não enviado após %d tentativas: %d aviso(s) "
+        "ficam pendentes para o próximo dia.",
+        TENTATIVAS_ENVIO,
+        len(avisos),
+    )
+    return 0
