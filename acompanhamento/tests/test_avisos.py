@@ -1,6 +1,7 @@
 """Testes do aviso diário de alunos atrasados."""
 
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.core import mail
 from django.db import IntegrityError
@@ -8,6 +9,7 @@ from django.test import TestCase
 
 from acompanhamento.avisos import rodar_aviso_diario
 from acompanhamento.models import AvisoIrregularidade
+from acompanhamento.situacao import NAO_CALCULADO, Resultado
 from processos.models import Aluno, Setor, SetorMembro, TrajetoriaAcademica, User
 
 HOJE = date(2026, 10, 19)
@@ -155,3 +157,20 @@ class AvisoDiarioTests(TestCase):
         AvisoIrregularidade.objects.create(**dados)
         with self.assertRaises(IntegrityError):
             AvisoIrregularidade.objects.create(**dados)
+
+    def test_situacao_nao_calculada_nao_encerra_o_aviso(self):
+        aluno_de_mestrado("Aluno Atrasado", -30)
+        rodar_aviso_diario(HOJE)
+
+        def nao_calcula(trajetorias, data_referencia):
+            falha = Resultado(NAO_CALCULADO)
+            return {t.pk: {"marco": falha, "defesa": falha} for t in trajetorias}
+
+        with patch("acompanhamento.avisos.calcular_situacoes", nao_calcula):
+            rodar_aviso_diario(HOJE)
+        resultado = rodar_aviso_diario(HOJE)
+
+        self.assertEqual(self.avisos_abertos().count(), 1)
+        self.assertEqual(AvisoIrregularidade.objects.count(), 1)
+        self.assertEqual(resultado, {"avisos_novos": 0, "emails_enviados": 0})
+        self.assertEqual(len(mail.outbox), 1)
