@@ -102,8 +102,17 @@ class AvisoIrregularidade(models.Model):
     )
     marco = models.CharField(max_length=10, choices=Marco.choices)
     situacao = models.CharField(max_length=25, choices=Situacao.choices, verbose_name="Situação")
+    data_limite = models.DateField(null=True, blank=True, verbose_name="Data limite")
+    prazo_reapresentacao = models.DateField(
+        null=True, blank=True, verbose_name="Prazo de reapresentação"
+    )
+    motivo = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Criado em")
     enviado_em = models.DateTimeField(null=True, blank=True, verbose_name="Enviado em")
+    tentativas_envio = models.PositiveSmallIntegerField(
+        default=0, verbose_name="Tentativas de envio"
+    )
+    motivo_pendencia = models.TextField(blank=True, verbose_name="Motivo da pendência")
     encerrado_em = models.DateTimeField(null=True, blank=True, verbose_name="Encerrado em")
 
     class Meta:
