@@ -15,6 +15,7 @@ from time import sleep
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import F
 from django.template.loader import render_to_string
 from django.utils import timezone
 
@@ -69,7 +70,8 @@ def atualizar_avisos(data_referencia=None):
     novos = []
     for trajetoria in trajetorias:
         for marco in MARCOS:
-            situacao = situacoes[trajetoria.pk][marco].situacao
+            resultado = situacoes[trajetoria.pk][marco]
+            situacao = resultado.situacao
             aberto = abertos.pop((trajetoria.pk, marco), None)
 
             # Continua atrasado do mesmo jeito: o aviso já existe.
@@ -88,7 +90,12 @@ def atualizar_avisos(data_referencia=None):
 
             if situacao in ATRASADO:
                 aviso = AvisoIrregularidade.objects.create(
-                    trajetoria=trajetoria, marco=marco, situacao=situacao
+                    trajetoria=trajetoria,
+                    marco=marco,
+                    situacao=situacao,
+                    data_limite=resultado.data_limite,
+                    prazo_reapresentacao=resultado.prazo_reapresentacao,
+                    motivo=resultado.motivo,
                 )
                 novos.append(aviso)
 
@@ -131,12 +138,17 @@ def enviar_email(avisos):
     """Manda um e-mail com os avisos. Devolve 1 se enviou e 0 se não.
 
     Se o envio falhar, tenta de novo até TENTATIVAS_ENVIO vezes. Se continuar
-    falhando, ou se não houver destinatário, os avisos ficam pendentes.
+    falhando, ou se não houver destinatário, os avisos ficam pendentes e o
+    motivo fica gravado em cada um.
     """
     if not avisos:
         return 0
+    ids = [aviso.pk for aviso in avisos]
+
     emails = destinatarios()
     if not emails:
+        motivo = "Ninguém na Secretaria PPGEC nem na Coordenação PPG para receber."
+        AvisoIrregularidade.objects.filter(pk__in=ids).update(motivo_pendencia=motivo)
         logger.warning(
             "Aviso de irregularidade sem destinatário: %d aviso(s) ficam "
             "pendentes para o próximo dia.",
@@ -144,22 +156,38 @@ def enviar_email(avisos):
         )
         return 0
 
+    # Enquanto nenhum aviso tiver saído, o e-mail é o levantamento inicial:
+    # traz todos os alunos que já estavam atrasados quando o aviso foi ligado.
+    levantamento_inicial = not AvisoIrregularidade.objects.filter(
+        enviado_em__isnull=False
+    ).exists()
+    alunos = len({aviso.trajetoria.aluno_id for aviso in avisos})
+    assunto = f"[PPGEC] {alunos} aluno(s) com prazo vencido"
+    if levantamento_inicial:
+        assunto = f"[PPGEC] Levantamento inicial: {alunos} aluno(s) com prazo vencido"
+
     html = render_to_string(
         "acompanhamento/emails/aviso_irregularidade.html",
-        {"avisos": avisos, "site_url": settings.SITE_URL},
+        {
+            "avisos": avisos,
+            "site_url": settings.SITE_URL,
+            "levantamento_inicial": levantamento_inicial,
+        },
     )
 
+    erro = ""
     for tentativa in range(1, TENTATIVAS_ENVIO + 1):
         try:
             send_mail(
-                subject=f"[PPGEC] {len(avisos)} aluno(s) com prazo vencido",
+                subject=assunto,
                 message="",
                 from_email=None,
                 recipient_list=emails,
                 html_message=html,
                 fail_silently=False,
             )
-        except Exception:
+        except Exception as exc:
+            erro = f"{type(exc).__name__}: {exc}"
             logger.warning(
                 "Falha ao enviar o aviso de irregularidade (tentativa %d de %d).",
                 tentativa,
@@ -170,11 +198,17 @@ def enviar_email(avisos):
                 sleep(PAUSA_ENTRE_TENTATIVAS)
             continue
 
-        AvisoIrregularidade.objects.filter(
-            pk__in=[aviso.pk for aviso in avisos]
-        ).update(enviado_em=timezone.now())
+        AvisoIrregularidade.objects.filter(pk__in=ids).update(
+            enviado_em=timezone.now(),
+            tentativas_envio=F("tentativas_envio") + tentativa,
+            motivo_pendencia="",
+        )
         return 1
 
+    AvisoIrregularidade.objects.filter(pk__in=ids).update(
+        tentativas_envio=F("tentativas_envio") + TENTATIVAS_ENVIO,
+        motivo_pendencia=f"Envio falhou {TENTATIVAS_ENVIO} vezes. Último erro: {erro}",
+    )
     logger.error(
         "Aviso de irregularidade não enviado após %d tentativas: %d aviso(s) "
         "ficam pendentes para o próximo dia.",
