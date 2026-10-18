@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<body>
+    <p>Os alunos abaixo passaram a estar com prazo vencido no AcadFlow.</p>
+    <table border="1" cellpadding="6" cellspacing="0">
+        <tr>
+            <th>Aluno</th>
+            <th>Nível</th>
+            <th>Marco</th>
+            <th>Situação</th>
+        </tr>
+        {% for aviso in avisos %}
+        <tr>
+            <td>{{ aviso.trajetoria.aluno.nome }}</td>
+            <td>{{ aviso.trajetoria.get_nivel_curso_display }}</td>
+            <td>{{ aviso.get_marco_display }}</td>
+            <td>{{ aviso.get_situacao_display }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <p>Veja a lista completa de alunos em <a href="{{ site_url }}">{{ site_url }}</a>.</p>
+</body>
+</html>
