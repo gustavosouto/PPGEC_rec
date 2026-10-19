@@ -148,11 +148,7 @@ def painel_processos(request):
     contexto.update(
         {
             "semestres": semestres,
-            "semestre_selecionado": (
-                semestre_selecionado
-                if semestre_selecionado in semestres
-                else contexto["semestre"]
-            ),
+            "semestre_selecionado": semestre_selecionado,
             "data_inicio_filtro": data_inicio_filtro,
             "data_fim_filtro": data_fim_filtro,
             "barras_tipo": _barras(contexto["por_tipo"]),

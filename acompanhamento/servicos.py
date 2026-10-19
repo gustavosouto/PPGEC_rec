@@ -156,6 +156,14 @@ def calcular_painel_processos(semestre=None, data_inicio=None, data_fim=None):
             raise ValueError("Informe as datas inicial e final.")
         if data_inicio > data_fim:
             raise ValueError("A data inicial deve ser anterior ou igual à data final.")
+        total_meses = (
+            (data_fim.year - data_inicio.year) * 12
+            + data_fim.month
+            - data_inicio.month
+            + 1
+        )
+        if total_meses > 120:
+            raise ValueError("O intervalo pode ter no máximo 10 anos.")
     else:
         if semestre is None:
             semestre = f"{hoje.year}.{'1' if hoje.month <= 6 else '2'}"

@@ -123,6 +123,23 @@ class TelaPainelProcessosTests(TestCase):
         self.assertContains(resposta, "Processos abertos de 01/01/2025 a 30/06/2025.")
         self.assertContains(resposta, '<option value="2025.1" selected>', html=False)
 
+    def test_intervalo_longo_mantem_semestre_escolhido(self):
+        self.client.force_login(self.perfis["membro_secretaria"])
+        resposta = self.client.get(
+            self.endereco,
+            {
+                "semestre": "2025.1",
+                "data_inicio": "0202-01-01",
+                "data_fim": "2026-12-31",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "O intervalo pode ter no máximo 10 anos.")
+        self.assertContains(resposta, "Processos abertos de 01/01/2025 a 30/06/2025.")
+        self.assertContains(resposta, '<option value="2025.1" selected>', html=False)
+
     def test_semestre_sem_processos_mostra_estados_vazios(self):
         self.client.force_login(self.perfis["membro_secretaria"])
         resposta = self.client.get(self.endereco, {"semestre": "2001.1"})

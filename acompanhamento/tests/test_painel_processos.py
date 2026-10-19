@@ -92,6 +92,24 @@ class PainelProcessosServicoTests(TestCase):
                 data_fim=date(2025, 1, 1),
             )
 
+    def test_intervalo_personalizado_rejeita_mais_de_dez_anos(self):
+        with self.assertRaisesMessage(
+            ValueError,
+            "O intervalo pode ter no máximo 10 anos.",
+        ):
+            calcular_painel_processos(
+                data_inicio=date(202, 1, 1),
+                data_fim=date(2026, 12, 31),
+            )
+
+    def test_intervalo_personalizado_aceita_exatamente_dez_anos(self):
+        dados = calcular_painel_processos(
+            data_inicio=date(2020, 1, 1),
+            data_fim=date(2029, 12, 31),
+        )
+
+        self.assertEqual(len(dados["abertos_por_mes"]), 120)
+
     def test_data_final_maxima_nao_estoura(self):
         processo = Processo.objects.create(
             usuario_criado_por=self.servidor,
