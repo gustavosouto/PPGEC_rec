@@ -1,12 +1,13 @@
 from datetime import date
 from django.test import TestCase
+from acompanhamento.lista_alunos import (
+    DEFESA,
+    IRREGULARES,
+    MARCO_INTERMEDIARIO,
+    listar_alunos_por_marco,
+)
 from acompanhamento.models import MarcoCalendario
 from acompanhamento.servicos import calcular_painel_sucesso_turma
-from acompanhamento.situacao import (
-    IRREGULAR_COM_CHANCE,
-    IRREGULAR_SEM_CHANCE,
-    calcular_situacoes,
-)
 from processos.models import Aluno, Processo, ProrrogacaoTrajetoria, Setor, TrajetoriaAcademica, User
 
 
@@ -23,24 +24,22 @@ class PainelSucessoTurmaServicoTests(TestCase):
             tipo_usuario=User.TipoUsuario.SERVIDOR,
         )
 
-    def test_irregulares_no_marco_e_conferencia_com_situacoes(self):
+    def test_irregulares_no_marco_e_conferencia_com_tela_de_alunos(self):
         """
         Confere que alunos irregulares no marco (com chance e sem chance) contam como irregulares
-        e que o total de ativos irregulares confere exatamente com as irregularidades de calcular_situacoes.
+        e conferem exatamente com a soma de irregulares da tela de alunos (listar_alunos_por_marco).
         """
         turma = "2026.2"
         data_ref = date(2026, 11, 1)
 
-        # Marco de calendário para gerar irregularidade com chance
         MarcoCalendario.objects.create(
             semestre="2026.2",
             tipo=MarcoCalendario.TipoMarco.PROJETO_DISSERTACAO,
             data_limite=date(2026, 9, 20),
         )
 
-        # 1. Aluno irregular com chance no marco (prazo_qualificacao 2026.2 sem apresentação após 20/09)
         a_marco_com_chance = Aluno.objects.create_user(email="m_chance@teste.invalid", nome="Marco Com Chance")
-        t_marco_com_chance = TrajetoriaAcademica.objects.create(
+        TrajetoriaAcademica.objects.create(
             aluno=a_marco_com_chance,
             nivel_curso=Aluno.NivelCurso.MESTRADO,
             status=TrajetoriaAcademica.Status.ATIVA,
@@ -49,9 +48,8 @@ class PainelSucessoTurmaServicoTests(TestCase):
             prazo_qualificacao="2026.2",
         )
 
-        # 2. Aluno irregular sem chance no marco (data_limite_qualificacao vencida)
         a_marco_sem_chance = Aluno.objects.create_user(email="m_sem_chance@teste.invalid", nome="Marco Sem Chance")
-        t_marco_sem_chance = TrajetoriaAcademica.objects.create(
+        TrajetoriaAcademica.objects.create(
             aluno=a_marco_sem_chance,
             nivel_curso=Aluno.NivelCurso.MESTRADO,
             status=TrajetoriaAcademica.Status.ATIVA,
@@ -61,9 +59,8 @@ class PainelSucessoTurmaServicoTests(TestCase):
             data_limite_qualificacao=date(2026, 7, 10),
         )
 
-        # 3. Aluno irregular na defesa (prazo de defesa estourado em data_ref)
         a_defesa = Aluno.objects.create_user(email="defesa_irreg@teste.invalid", nome="Defesa Irregular")
-        t_defesa = TrajetoriaAcademica.objects.create(
+        TrajetoriaAcademica.objects.create(
             aluno=a_defesa,
             nivel_curso=Aluno.NivelCurso.MESTRADO,
             status=TrajetoriaAcademica.Status.ATIVA,
@@ -71,9 +68,8 @@ class PainelSucessoTurmaServicoTests(TestCase):
             data_ingresso=date(2024, 1, 1),
         )
 
-        # 4. Aluno ativo regular
         a_regular = Aluno.objects.create_user(email="ativo_reg@teste.invalid", nome="Ativo Regular")
-        t_regular = TrajetoriaAcademica.objects.create(
+        TrajetoriaAcademica.objects.create(
             aluno=a_regular,
             nivel_curso=Aluno.NivelCurso.MESTRADO,
             status=TrajetoriaAcademica.Status.ATIVA,
@@ -82,9 +78,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
             prazo_qualificacao="2027.1",
         )
 
-        trajetorias_ativas = [t_marco_com_chance, t_marco_sem_chance, t_defesa, t_regular]
-
-        # Conferência do painel
         dados = calcular_painel_sucesso_turma(Aluno.NivelCurso.MESTRADO, data_referencia=data_ref)
         turma_dados = next((t for t in dados if t["turma"] == turma), None)
         self.assertIsNotNone(turma_dados)
@@ -92,25 +85,23 @@ class PainelSucessoTurmaServicoTests(TestCase):
         self.assertEqual(turma_dados["ativos_regulares"], 1)
         self.assertEqual(turma_dados["ativos_irregulares"], 3)
 
-        # Conferência direta usando calcular_situacoes nas trajetórias criadas
-        situacoes = calcular_situacoes(trajetorias_ativas, data_ref)
-        total_irregulares_calculados = sum(
-            1
-            for t in trajetorias_ativas
-            if any(
-                situacoes.get(t.pk, {}).get(chave)
-                and situacoes[t.pk][chave].situacao in (IRREGULAR_COM_CHANCE, IRREGULAR_SEM_CHANCE)
-                for chave in ("marco", "defesa")
-            )
+        alunos = Aluno.objects.filter(
+            pk__in=[a_marco_com_chance.pk, a_marco_sem_chance.pk, a_defesa.pk, a_regular.pk]
         )
-        self.assertEqual(total_irregulares_calculados, turma_dados["ativos_irregulares"])
+        irregulares_na_tela = {
+            linha.trajetoria.pk
+            for marco in (MARCO_INTERMEDIARIO, DEFESA)
+            for linha in listar_alunos_por_marco(
+                alunos, marco, situacao=IRREGULARES, data_referencia=data_ref
+            )
+        }
+        self.assertEqual(len(irregulares_na_tela), turma_dados["ativos_irregulares"])
 
     def test_separacao_por_nivel_e_exclusao_de_especial_e_homologacao(self):
         """Mestrado e doutorado saem separados; aluno especial e em homologação ficam fora."""
         turma = "2099.1"
         data_ref = date(2099, 5, 1)
 
-        # Mestrado Ativo
         a_m = Aluno.objects.create_user(email="m1@teste.invalid", nome="M1")
         TrajetoriaAcademica.objects.create(
             aluno=a_m,
@@ -120,7 +111,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
             data_ingresso=date(2099, 3, 1),
         )
 
-        # Doutorado Ativo
         a_d = Aluno.objects.create_user(email="d1@teste.invalid", nome="D1")
         TrajetoriaAcademica.objects.create(
             aluno=a_d,
@@ -130,7 +120,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
             data_ingresso=date(2099, 3, 1),
         )
 
-        # Aluno Especial (deve ficar fora da contagem do mestrado)
         a_esp = Aluno.objects.create_user(email="esp1@teste.invalid", nome="ESP1")
         TrajetoriaAcademica.objects.create(
             aluno=a_esp,
@@ -140,7 +129,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
             data_ingresso=date(2099, 3, 1),
         )
 
-        # Trajetória em homologação (deve ficar fora)
         a_hom = Aluno.objects.create_user(email="hom1@teste.invalid", nome="HOM1")
         TrajetoriaAcademica.objects.create(
             aluno=a_hom,
@@ -190,7 +178,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
         turma = "2098.1"
         data_ref = date(2099, 5, 1)
 
-        # Aluno com ProrrogacaoTrajetoria registrada
         a_com_prorr = Aluno.objects.create_user(email="com_prorr@teste.invalid", nome="Com Prorr")
         traj_com_prorr = TrajetoriaAcademica.objects.create(
             aluno=a_com_prorr,
@@ -208,7 +195,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
             registrado_por=self.servidor,
         )
 
-        # Aluno apenas com Processo de prorrogação em análise (não deve contar)
         a_em_analise = Aluno.objects.create_user(email="em_analise@teste.invalid", nome="Em Analise")
         TrajetoriaAcademica.objects.create(
             aluno=a_em_analise,
@@ -244,7 +230,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
         turma = "2097.1"
         data_ref = date(2101, 6, 1)
 
-        # 18 Concluídos
         for i in range(18):
             aluno = Aluno.objects.create_user(email=f"conc_{i}@teste.invalid", nome=f"C{i}")
             TrajetoriaAcademica.objects.create(
@@ -258,7 +243,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
                 data_defesa=date(2098, 3, 1),
             )
 
-        # 7 Desligados
         for i in range(7):
             aluno = Aluno.objects.create_user(email=f"desl_{i}@teste.invalid", nome=f"D{i}")
             TrajetoriaAcademica.objects.create(
@@ -269,7 +253,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
                 data_ingresso=date(2097, 3, 1),
             )
 
-        # 1 Trancado
         aluno_tranc = Aluno.objects.create_user(email="tranc@teste.invalid", nome="T1")
         TrajetoriaAcademica.objects.create(
             aluno=aluno_tranc,
@@ -279,7 +262,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
             data_ingresso=date(2097, 3, 1),
         )
 
-        # 10 Ativos Regulares
         for i in range(10):
             aluno = Aluno.objects.create_user(email=f"reg_{i}@teste.invalid", nome=f"R{i}")
             TrajetoriaAcademica.objects.create(
@@ -290,7 +272,6 @@ class PainelSucessoTurmaServicoTests(TestCase):
                 data_ingresso=date(2101, 1, 1),
             )
 
-        # 4 Ativos Irregulares
         for i in range(4):
             aluno = Aluno.objects.create_user(email=f"irreg_{i}@teste.invalid", nome=f"IR{i}")
             TrajetoriaAcademica.objects.create(
