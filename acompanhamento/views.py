@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.urls import reverse
@@ -6,7 +8,11 @@ from .decoradores import tela_do_modulo
 from .telas import TELAS
 from .models import MarcoCalendario
 from .forms import MarcoCalendarioForm
-from .servicos import calcular_painel_docentes, calcular_painel_processos
+from .servicos import (
+    calcular_painel_docentes,
+    calcular_painel_processos,
+    validar_semestre,
+)
 
 @tela_do_modulo
 def inicio(request):
@@ -75,27 +81,84 @@ def _barras(contagens):
 
 @tela_do_modulo
 def painel_processos(request):
-    """Exibe os indicadores dos processos abertos no semestre escolhido."""
-    semestre = request.GET.get("semestre") or None
-    try:
-        contexto = calcular_painel_processos(semestre=semestre)
-    except ValueError:
-        messages.error(request, "Semestre inválido. Use o formato AAAA.1 ou AAAA.2.")
-        contexto = calcular_painel_processos()
+    """Exibe os indicadores no semestre ou intervalo de datas escolhido."""
+    semestre_solicitado = request.GET.get("semestre") or None
+    data_inicio_solicitada = request.GET.get("data_inicio") or None
+    data_fim_solicitada = request.GET.get("data_fim") or None
+    filtro_por_datas = data_inicio_solicitada is not None or data_fim_solicitada is not None
+    semestre_valido = None
+    if semestre_solicitado is not None:
+        try:
+            validar_semestre(semestre_solicitado)
+        except ValueError:
+            pass
+        else:
+            semestre_valido = semestre_solicitado
+
+    intervalo_aplicado = False
+    if filtro_por_datas:
+        try:
+            if data_inicio_solicitada is None or data_fim_solicitada is None:
+                raise ValueError("Informe as datas inicial e final.")
+            try:
+                data_inicio = date.fromisoformat(data_inicio_solicitada)
+                data_fim = date.fromisoformat(data_fim_solicitada)
+            except ValueError as erro:
+                raise ValueError("Informe datas válidas no formato DD/MM/AAAA.") from erro
+            contexto = calcular_painel_processos(
+                semestre=semestre_valido,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+            )
+            data_inicio_filtro = data_inicio
+            data_fim_filtro = data_fim
+            intervalo_aplicado = True
+        except ValueError as erro:
+            messages.error(request, str(erro))
+            contexto = calcular_painel_processos(semestre=semestre_valido)
+            data_inicio_filtro = None
+            data_fim_filtro = None
+    else:
+        try:
+            contexto = calcular_painel_processos(semestre=semestre_solicitado)
+        except ValueError:
+            messages.error(request, "Semestre inválido. Use o formato AAAA.1 ou AAAA.2.")
+            contexto = calcular_painel_processos()
+        data_inicio_filtro = None
+        data_fim_filtro = None
 
     meses = {
         f"{chave[5:]}/{chave[:4]}": total
         for chave, total in contexto["abertos_por_mes"].items()
     }
     semestres = _semestres_recentes()
-    if contexto["semestre"] not in semestres:
-        semestres.append(contexto["semestre"])
+    if intervalo_aplicado and semestre_valido is not None:
+        semestre_selecionado = semestre_valido
+    else:
+        semestre_selecionado = contexto["semestre"]
+    if semestre_selecionado is None:
+        semestre_selecionado = _semestres_recentes(quantidade=1)[0]
+    if semestre_selecionado not in semestres:
+        semestres.append(semestre_selecionado)
+
+    contagens_tipo_mes = {
+        f"{item['mes'][5:]}/{item['mes'][:4]} — {item['tipo']}": item["total"]
+        for item in contexto["por_tipo_por_mes"]
+    }
     contexto.update(
         {
             "semestres": semestres,
+            "semestre_selecionado": (
+                semestre_selecionado
+                if semestre_selecionado in semestres
+                else contexto["semestre"]
+            ),
+            "data_inicio_filtro": data_inicio_filtro,
+            "data_fim_filtro": data_fim_filtro,
             "barras_tipo": _barras(contexto["por_tipo"]),
             "barras_status": _barras(contexto["por_status"]),
             "barras_mes": _barras(meses),
+            "barras_tipo_mes": _barras(contagens_tipo_mes),
         }
     )
     return render(request, "acompanhamento/painel_processos.html", contexto)

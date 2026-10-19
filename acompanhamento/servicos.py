@@ -1,7 +1,25 @@
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
+
 from django.db.models import Avg, Count, F, Q
+from django.db.models.functions import TruncMonth
 from django.utils import timezone
+
 from processos.models import Docente, Polo, Processo
+
+
+def validar_semestre(semestre):
+    """Valida o formato AAAA.1/AAAA.2 e retorna (ano, período)."""
+    partes = str(semestre).split(".")
+    if (
+        len(partes) != 2
+        or partes[1] not in {"1", "2"}
+        or not partes[0].isdigit()
+        or len(partes[0]) != 4
+        or not 1 <= int(partes[0]) <= 9999
+    ):
+        raise ValueError(f"Semestre inválido: '{semestre}'. Utilize o formato YYYY.1 ou YYYY.2.")
+    return int(partes[0]), partes[1]
 
 
 def calcular_painel_docentes(somente_permanentes=False):
@@ -117,48 +135,77 @@ def calcular_painel_docentes(somente_permanentes=False):
         "somente_permanentes": somente_permanentes,
     }
 
-def calcular_painel_processos(semestre=None):
+def calcular_painel_processos(semestre=None, data_inicio=None, data_fim=None):
     """
     Calcula indicadores do painel de processos/solicitações dos discentes.
 
     Métricas calculadas:
     - Quantidade por tipo de processo e por status;
-    - Volume mensal (processos abertos por mês, incluindo meses sem processos com 0);
+    - Volume mensal e quantidade por tipo em cada mês do período;
     - Tempo médio de resolução em dias (None caso não haja finalizados);
     - Quantidade de processos em atraso (usando esta_atrasado).
+
+    Um intervalo completo de datas prevalece sobre o semestre informado.
+    Sem datas, usa o semestre informado ou o semestre atual.
     """
-    # 1. Definição do semestre padrão ou validação do parâmetro
     hoje = timezone.localdate()
-    if semestre is None:
-        semestre = f"{hoje.year}.{'1' if hoje.month <= 6 else '2'}"
+    intervalo_personalizado = data_inicio is not None or data_fim is not None
 
-    # Validação do formato do semestre (YYYY.1 ou YYYY.2)
-    partes = str(semestre).split(".")
-    if len(partes) != 2 or partes[1] not in {"1", "2"} or not partes[0].isdigit() or len(partes[0]) != 4:
-        raise ValueError(f"Semestre inválido: '{semestre}'. Utilize o formato YYYY.1 ou YYYY.2.")
-
-    ano = int(partes[0])
-    periodo = partes[1]
-
-    if periodo == "1":
-        meses_semestre = [f"{ano}-{m:02d}" for m in range(1, 7)]
-        inicio = timezone.datetime(ano, 1, 1, tzinfo=timezone.get_current_timezone())
-        fim = timezone.datetime(ano, 6, 30, 23, 59, 59, tzinfo=timezone.get_current_timezone())
+    if intervalo_personalizado:
+        if data_inicio is None or data_fim is None:
+            raise ValueError("Informe as datas inicial e final.")
+        if data_inicio > data_fim:
+            raise ValueError("A data inicial deve ser anterior ou igual à data final.")
     else:
-        meses_semestre = [f"{ano}-{m:02d}" for m in range(7, 13)]
-        inicio = timezone.datetime(ano, 7, 1, tzinfo=timezone.get_current_timezone())
-        fim = timezone.datetime(ano, 12, 31, 23, 59, 59, tzinfo=timezone.get_current_timezone())
+        if semestre is None:
+            semestre = f"{hoje.year}.{'1' if hoje.month <= 6 else '2'}"
 
-    queryset = Processo.objects.filter(data_criacao__range=(inicio, fim))
+        ano, periodo = validar_semestre(semestre)
+        if periodo == "1":
+            data_inicio = date(ano, 1, 1)
+            data_fim = date(ano, 6, 30)
+        else:
+            data_inicio = date(ano, 7, 1)
+            data_fim = date(ano, 12, 31)
+
+    queryset = Processo.objects.filter(data_criacao__date__range=(data_inicio, data_fim))
 
     total_processos = queryset.count()
 
-    # Contagem por tipo de processo
+    # Agrupa em uma consulta só por tipo e mês para os dois gráficos.
+    contagens_tipo_mes = queryset.annotate(
+        mes=TruncMonth("data_criacao", tzinfo=timezone.get_current_timezone())
+    ).values("tipo", "mes").annotate(total=Count("id")).order_by("mes", "tipo")
+
     contagem_por_tipo = {}
-    for item in queryset.values("tipo").annotate(total=Count("id")).order_by("-total"):
+    abertos_por_mes = {}
+    ano_mes = (data_inicio.year, data_inicio.month)
+    ultimo_ano_mes = (data_fim.year, data_fim.month)
+    while ano_mes <= ultimo_ano_mes:
+        ano, mes = ano_mes
+        abertos_por_mes[f"{ano}-{mes:02d}"] = 0
+        ano_mes = (ano + 1, 1) if mes == 12 else (ano, mes + 1)
+
+    por_tipo_por_mes = []
+    rotulos_tipos = dict(Processo.TipoProcesso.choices)
+    for item in contagens_tipo_mes:
         tipo_valor = item["tipo"]
-        label = dict(Processo.TipoProcesso.choices).get(tipo_valor, tipo_valor)
-        contagem_por_tipo[label] = item["total"]
+        rotulo_tipo = rotulos_tipos.get(tipo_valor, tipo_valor)
+        chave_mes = item["mes"].strftime("%Y-%m")
+        contagem_por_tipo[rotulo_tipo] = (
+            contagem_por_tipo.get(rotulo_tipo, 0) + item["total"]
+        )
+        abertos_por_mes[chave_mes] += item["total"]
+        por_tipo_por_mes.append(
+            {
+                "mes": chave_mes,
+                "tipo": rotulo_tipo,
+                "total": item["total"],
+            }
+        )
+    contagem_por_tipo = dict(
+        sorted(contagem_por_tipo.items(), key=lambda item: item[1], reverse=True)
+    )
 
     # Contagem por status
     contagem_por_status = {}
@@ -166,13 +213,6 @@ def calcular_painel_processos(semestre=None):
         status_valor = item["status"]
         label = dict(Processo.StatusProcesso.choices).get(status_valor, status_valor)
         contagem_por_status[label] = item["total"]
-
-    # 2. Processos abertos por mês com zeros pré-populados para todos os meses do período
-    abertos_por_mes = {mes: 0 for mes in meses_semestre}
-    for proc in queryset.order_by("data_criacao"):
-        chave_mes = proc.data_criacao.strftime("%Y-%m")
-        if chave_mes in abertos_por_mes:
-            abertos_por_mes[chave_mes] += 1
 
     # 3. Tempo médio de resolução (None caso não haja finalizados)
     finalizados = queryset.filter(
@@ -196,8 +236,11 @@ def calcular_painel_processos(semestre=None):
 
     return {
         "semestre": semestre,
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
         "total_processos": total_processos,
         "por_tipo": contagem_por_tipo,
+        "por_tipo_por_mes": por_tipo_por_mes,
         "por_status": contagem_por_status,
         "abertos_por_mes": abertos_por_mes,
         "tempo_medio_dias": tempo_medio_dias,
