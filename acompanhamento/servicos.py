@@ -1,7 +1,13 @@
 from decimal import Decimal, ROUND_HALF_UP
 from django.db.models import Avg, Count, F, Q
 from django.utils import timezone
-from processos.models import Docente, Polo, Processo
+from acompanhamento.situacao import (
+    IRREGULAR_COM_CHANCE,
+    IRREGULAR_SEM_CHANCE,
+    calcular_situacoes,
+)
+from processos.models import Docente, Polo, Processo, TrajetoriaAcademica
+
 
 
 def calcular_painel_docentes(somente_permanentes=False):
@@ -203,3 +209,96 @@ def calcular_painel_processos(semestre=None):
         "tempo_medio_dias": tempo_medio_dias,
         "total_atrasados": total_atrasados,
     }
+
+def calcular_painel_sucesso_turma(nivel, data_referencia=None):
+    """
+    Calcula indicadores de taxa de sucesso e distribuição por turma de ingresso para um nível específico.
+    """
+    if data_referencia is None:
+        data_referencia = timezone.localdate()
+
+    # Filtra pelo nível e exclui trajetórias removidas e em homologação
+    trajetorias_qs = (
+        TrajetoriaAcademica.objects.filter(nivel_curso=nivel)
+        .exclude(
+            status__in=[
+                TrajetoriaAcademica.Status.REMOVIDA,
+                TrajetoriaAcademica.Status.EM_HOMOLOGACAO,
+            ]
+        )
+        .select_related("aluno")
+        .prefetch_related("prorrogacoes")
+        .order_by("-ingresso")
+    )
+
+    lista_trajetorias = list(trajetorias_qs)
+
+    # Coleta trajetórias ativas para calcular situações de marco/defesa
+    ativas = [t for t in lista_trajetorias if t.status == TrajetoriaAcademica.Status.ATIVA]
+    situacoes = calcular_situacoes(ativas, data_referencia)
+
+    turmas_dict = {}
+
+    for traj in lista_trajetorias:
+        turma_nome = traj.ingresso or "Não informado"
+        if turma_nome not in turmas_dict:
+            turmas_dict[turma_nome] = {
+                "turma": turma_nome,
+                "ingressantes": 0,
+                "concluidos": 0,
+                "desligados": 0,
+                "trancados": 0,
+                "ativos": 0,
+                "ativos_regulares": 0,
+                "ativos_irregulares": 0,
+                "com_prorrogacao": 0,
+                "taxa_conclusao": 0.0,
+                "taxa_desligamento": 0.0,
+                "taxa_trancamento": 0.0,
+                "taxa_ativos": 0.0,
+                "taxa_ativos_regulares": 0.0,
+                "taxa_ativos_irregulares": 0.0,
+                "percentual_prorrogacao": 0.0,
+            }
+
+        dados = turmas_dict[turma_nome]
+        dados["ingressantes"] += 1
+
+        if traj.status == TrajetoriaAcademica.Status.CONCLUIDA:
+            dados["concluidos"] += 1
+        elif traj.status == TrajetoriaAcademica.Status.DESLIGADA:
+            dados["desligados"] += 1
+        elif traj.status == TrajetoriaAcademica.Status.TRANCADA:
+            dados["trancados"] += 1
+        elif traj.status == TrajetoriaAcademica.Status.ATIVA:
+            dados["ativos"] += 1
+            # Verifica se está irregular com chance ou sem chance no marco ou na defesa
+            dados_sit = situacoes.get(traj.pk, {})
+            eh_irregular = any(
+                dados_sit.get(chave)
+                and dados_sit[chave].situacao in (IRREGULAR_COM_CHANCE, IRREGULAR_SEM_CHANCE)
+                for chave in ("marco", "defesa")
+            )
+            if eh_irregular:
+                dados["ativos_irregulares"] += 1
+            else:
+                dados["ativos_regulares"] += 1
+
+        # Prorrogação considerada via meses_prorrogados na trajetória
+        if traj.meses_prorrogados > 0:
+            dados["com_prorrogacao"] += 1
+
+    resultado = []
+    for dados in turmas_dict.values():
+        total = dados["ingressantes"]
+        if total > 0:
+            dados["taxa_conclusao"] = round((dados["concluidos"] / total) * 100, 1)
+            dados["taxa_desligamento"] = round((dados["desligados"] / total) * 100, 1)
+            dados["taxa_trancamento"] = round((dados["trancados"] / total) * 100, 1)
+            dados["taxa_ativos"] = round((dados["ativos"] / total) * 100, 1)
+            dados["taxa_ativos_regulares"] = round((dados["ativos_regulares"] / total) * 100, 1)
+            dados["taxa_ativos_irregulares"] = round((dados["ativos_irregulares"] / total) * 100, 1)
+            dados["percentual_prorrogacao"] = round((dados["com_prorrogacao"] / total) * 100, 1)
+        resultado.append(dados)
+
+    return resultado
