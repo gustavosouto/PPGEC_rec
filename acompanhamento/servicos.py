@@ -4,13 +4,13 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.db.models import Avg, Count, F, Q
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
+
 from acompanhamento.situacao import (
     IRREGULAR_COM_CHANCE,
     IRREGULAR_SEM_CHANCE,
     calcular_situacoes,
 )
 from processos.models import Docente, Polo, Processo, TrajetoriaAcademica
-
 
 
 def validar_semestre(semestre):
@@ -140,6 +140,7 @@ def calcular_painel_docentes(somente_permanentes=False):
         "somente_permanentes": somente_permanentes,
     }
 
+
 def calcular_painel_processos(semestre=None, data_inicio=None, data_fim=None):
     """
     Calcula indicadores do painel de processos/solicitações dos discentes.
@@ -259,6 +260,7 @@ def calcular_painel_processos(semestre=None, data_inicio=None, data_fim=None):
         "tempo_medio_dias": tempo_medio_dias,
         "total_atrasados": total_atrasados,
     }
+
 
 def calcular_painel_sucesso_turma(nivel, data_referencia=None):
     """

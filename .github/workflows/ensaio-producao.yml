@@ -45,6 +45,7 @@ jobs:
           SECURE_HSTS_SECONDS=0
           USE_X_FORWARDED_PROTO=False
           ACOMPANHAMENTO_ATIVO=False
+          ACOMPANHAMENTO_AVISO_ATIVO=False
           EOF
           cat > docker-compose.ensaio.yml <<'EOF'
           services:
@@ -122,6 +123,26 @@ jobs:
           docker compose exec -T web python manage.py test processos.tests.TodasAsTelasRenderizamTests
           docker compose exec -T web python manage.py test acompanhamento
 
+      - name: A tarefa do beat está registrada no worker
+        id: beat
+        env:
+          ENSAIO_TAG: ensaio
+        run: |
+          tarefa=$(docker compose exec -T web python -c "import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE','ppgec.settings'); import django; django.setup(); from ppgec.celery import app; print(app.conf.beat_schedule['acompanhamento-aviso-diario']['task'])" | tail -n 1 | tr -d '\r')
+          echo "Tarefa da entrada do beat: $tarefa"
+          [ -n "$tarefa" ]
+          registradas=""
+          for i in $(seq 1 15); do
+            registradas=$(docker compose exec -T celery celery -A ppgec inspect registered 2>&1 || true)
+            if echo "$registradas" | grep -qF "$tarefa"; then
+              echo "Tarefa registrada no worker (tentativa $i)"; exit 0
+            fi
+            sleep 4
+          done
+          echo "$registradas"
+          echo "A tarefa $tarefa não aparece em inspect registered"
+          exit 1
+
       - name: Nenhum contêiner reiniciou
         id: reinicios
         env:
@@ -171,6 +192,7 @@ jobs:
             echo "| Serviços do docker-compose-prod.yml no ar, migrations do PR e makemigrations --check | $(marca '${{ steps.sobe.outcome }}') |"
             echo "| Site responde e /acompanhamento/ dá 404 com a chave desligada | $(marca '${{ steps.site.outcome }}') |"
             echo "| Páginas principais com cada perfil | $(marca '${{ steps.paginas.outcome }}') |"
+            echo "| Tarefa do beat registrada no worker | $(marca '${{ steps.beat.outcome }}') |"
             echo "| Nenhum contêiner reiniciou | $(marca '${{ steps.reinicios.outcome }}') |"
             echo "| Nenhum log com exceção | $(marca '${{ steps.logs.outcome }}') |"
           } >> "$GITHUB_STEP_SUMMARY"
