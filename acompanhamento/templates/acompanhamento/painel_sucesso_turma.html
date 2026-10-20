@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Painel de Sucesso por Turma | AcadFlow{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="lista-cabecalho">
+        <div>
+            <h1 class="section-title">Painel de Sucesso por Turma</h1>
+            <p class="muted">Indicadores e distribuição de discentes por turma de ingresso.</p>
+        </div>
+    </div>
+
+    <form method="get" class="filtros" aria-label="Filtro do painel">
+        <div class="filtros-linha">
+            <div class="filtros-campo">
+                <label for="nivel">Nível</label>
+                <select id="nivel" name="nivel">
+                    <option value="MESTRADO" {% if nivel_selecionado == "MESTRADO" %}selected{% endif %}>Mestrado</option>
+                    <option value="DOUTORADO" {% if nivel_selecionado == "DOUTORADO" %}selected{% endif %}>Doutorado</option>
+                </select>
+            </div>
+            <button class="btn" type="submit">Filtrar</button>
+        </div>
+    </form>
+</section>
+
+{% for turma in turmas %}
+    <section class="card">
+        <h2 class="section-title">Turma {{ turma.turma }}</h2>
+        <p class="muted">{{ turma.ingressantes }} ingressante{{ turma.ingressantes|pluralize }}. Os percentuais são calculados sobre os ingressantes.</p>
+
+        {% if turma.dados_limitados %}
+            <p class="alert alert-info">
+                Esta turma é anterior a 2026.2. O Acadflow começou em 2026.2, e desligamentos, prorrogações e defesas anteriores podem não estar registrados.
+            </p>
+        {% endif %}
+
+        {% include "acompanhamento/_barras.html" with titulo="Indicadores da turma" barras=turma.barras vazio="Sem dados para os indicadores." %}
+    </section>
+{% empty %}
+    <section class="card">
+        <p class="estado-vazio-inline">Nenhuma turma encontrada.</p>
+    </section>
+{% endfor %}
+{% endblock %}
