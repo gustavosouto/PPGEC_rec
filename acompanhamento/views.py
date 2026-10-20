@@ -1,24 +1,29 @@
 from datetime import date
 
-from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import number_format
+
 from .decoradores import tela_do_modulo
-from .telas import TELAS
-from .models import MarcoCalendario
 from .forms import MarcoCalendarioForm
+from .models import MarcoCalendario
 from .servicos import (
     calcular_painel_docentes,
     calcular_painel_processos,
+    calcular_painel_sucesso_turma,
     validar_semestre,
 )
+from .telas import TELAS
+
 
 @tela_do_modulo
 def inicio(request):
     """Página inicial do módulo, com a lista das telas disponíveis."""
     telas = [{"titulo": titulo, "endereco": reverse(rota)} for titulo, rota in TELAS]
     return render(request, "acompanhamento/inicio.html", {"telas": telas})
+
 
 @tela_do_modulo
 def painel_docentes(request):
@@ -28,11 +33,12 @@ def painel_docentes(request):
     contexto["somente_permanentes"] = somente_permanentes
     return render(request, "acompanhamento/painel_docentes.html", contexto)
 
+
 @tela_do_modulo
 def calendario_marcos(request):
     """Lista os marcos do calendário e permite cadastrar/editar."""
     marcos = MarcoCalendario.objects.all().order_by("data_limite")
-    
+
     marco_id = request.GET.get("editar")
     marco_edicao = None
     if marco_id:
@@ -55,6 +61,7 @@ def calendario_marcos(request):
     }
     return render(request, "acompanhamento/calendario_marcos.html", contexto)
 
+
 def _semestres_recentes(quantidade=6):
     """Semestre atual e os anteriores, do mais recente para o mais antigo."""
     hoje = timezone.localdate()
@@ -76,6 +83,35 @@ def _barras(contagens):
             "largura": round(total * 100 / maior, 1) if maior else 0,
         }
         for rotulo, total in contagens.items()
+    ]
+
+
+# Barras do painel de sucesso por turma: rótulo, chave da contagem e chave do
+# percentual sobre os ingressantes, como vêm de calcular_painel_sucesso_turma.
+INDICADORES_DA_TURMA = (
+    ("Concluídos", "concluidos", "taxa_conclusao"),
+    ("Desligados", "desligados", "taxa_desligamento"),
+    ("Trancados", "trancados", "taxa_trancamento"),
+    ("Ativos", "ativos", "taxa_ativos"),
+    ("Ativos regulares", "ativos_regulares", "taxa_ativos_regulares"),
+    ("Ativos irregulares", "ativos_irregulares", "taxa_ativos_irregulares"),
+    ("Com prorrogação", "com_prorrogacao", "percentual_prorrogacao"),
+)
+
+
+def _barras_da_turma(turma):
+    """Barras da turma com a largura igual ao percentual sobre os ingressantes.
+
+    O _barras() usa o maior total como 100%, o que deixaria cheia a barra de
+    concluídos mesmo com 45% da turma.
+    """
+    return [
+        {
+            "rotulo": rotulo,
+            "total": f"{turma[contagem]} ({number_format(turma[percentual], decimal_pos=1)}%)",
+            "largura": turma[percentual],
+        }
+        for rotulo, contagem, percentual in INDICADORES_DA_TURMA
     ]
 
 
@@ -158,3 +194,29 @@ def painel_processos(request):
         }
     )
     return render(request, "acompanhamento/painel_processos.html", contexto)
+
+
+@tela_do_modulo
+def painel_sucesso_turma(request):
+    """Exibe os indicadores do painel de sucesso por turma."""
+    nivel_selecionado = request.GET.get("nivel")
+    nivel_padrao = "MESTRADO"
+
+    if nivel_selecionado and nivel_selecionado not in ["MESTRADO", "DOUTORADO"]:
+        messages.error(
+            request,
+            "Nível inválido. Escolha entre Mestrado ou Doutorado."
+        )
+        nivel_selecionado = nivel_padrao
+    elif not nivel_selecionado:
+        nivel_selecionado = nivel_padrao
+
+    turmas = calcular_painel_sucesso_turma(nivel=nivel_selecionado)
+    for turma in turmas:
+        turma["barras"] = _barras_da_turma(turma)
+
+    contexto = {
+        "nivel_selecionado": nivel_selecionado,
+        "turmas": turmas,
+    }
+    return render(request, "acompanhamento/painel_sucesso_turma.html", contexto)

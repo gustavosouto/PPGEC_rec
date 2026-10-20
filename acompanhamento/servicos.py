@@ -262,6 +262,19 @@ def calcular_painel_processos(semestre=None, data_inicio=None, data_fim=None):
     }
 
 
+# Primeiro semestre com registros no Acadflow. Nas turmas anteriores,
+# desligamentos, prorrogações e defesas podem não ter sido lançados.
+INICIO_DOS_REGISTROS = (2026, "2")
+
+
+def _anterior_aos_registros(turma):
+    """Diz se a turma ingressou antes do primeiro semestre registrado no Acadflow."""
+    try:
+        return validar_semestre(turma) < INICIO_DOS_REGISTROS
+    except ValueError:
+        return False
+
+
 def calcular_painel_sucesso_turma(nivel, data_referencia=None):
     """
     Calcula indicadores de taxa de sucesso e distribuição por turma de ingresso para um nível específico.
@@ -296,6 +309,7 @@ def calcular_painel_sucesso_turma(nivel, data_referencia=None):
         if turma_nome not in turmas_dict:
             turmas_dict[turma_nome] = {
                 "turma": turma_nome,
+                "dados_limitados": _anterior_aos_registros(turma_nome),
                 "ingressantes": 0,
                 "concluidos": 0,
                 "desligados": 0,
