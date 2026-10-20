@@ -386,3 +386,5 @@ INSTALLED_APPS += ["django_celery_results"]
 # acessível. Ligar ou desligar exige apenas mudar a variável e reiniciar os
 # contêineres, sem reverter código.
 ACOMPANHAMENTO_ATIVO = env_bool("ACOMPANHAMENTO_ATIVO", False)
+# Aviso diário de alunos irregulares. Só funciona com o módulo também ativo.
+ACOMPANHAMENTO_AVISO_ATIVO = env_bool("ACOMPANHAMENTO_AVISO_ATIVO", False)
