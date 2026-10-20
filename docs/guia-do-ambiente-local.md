@@ -48,11 +48,6 @@ Se o PowerShell recusar a ativação por causa da política de execução de scr
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-Se der erro na ativação do py -3.12 -m venv .venv, rode alternativamente:
-```powershell
-python -m venv .venv 
-```
-
 **Linux e macOS:**
 ```bash
 python3.12 -m venv .venv
