@@ -3,6 +3,14 @@
 {% block title %}Painel de Sucesso por Turma | AcadFlow{% endblock %}
 
 {% block content %}
+{% if messages %}
+  <div class="alertas">
+    {% for message in messages %}
+      <div class="alert {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 <section class="card">
     <div class="lista-cabecalho">
         <div>
@@ -16,7 +24,6 @@
             <div class="filtros-campo">
                 <label for="nivel">Nível</label>
                 <select id="nivel" name="nivel">
-                    <option value="TODOS" {% if nivel_selecionado == "TODOS" %}selected{% endif %}>Todos os Níveis</option>
                     <option value="MESTRADO" {% if nivel_selecionado == "MESTRADO" %}selected{% endif %}>Mestrado</option>
                     <option value="DOUTORADO" {% if nivel_selecionado == "DOUTORADO" %}selected{% endif %}>Doutorado</option>
                 </select>
@@ -28,11 +35,11 @@
 
 {% for turma in turmas %}
     <section class="card">
-        <h2 class="section-title">Turma {{ turma.nome }} ({{ turma.semestre }})</h2>
+        <h2 class="section-title">Turma {{ turma.turma }}</h2>
 
         {% if turma.dados_limitados %}
             <p class="alerta">
-                ⚠️ Esta turma é anterior a 2026.2. Os dados de trajetória e indicadores são parciais ou indisponíveis.
+                ⚠️ Esta turma é anterior a 2026.2. O Acadflow começou em 2026.2, e desligamentos, prorrogações e defesas anteriores podem não estar registrados.
             </p>
         {% endif %}
 

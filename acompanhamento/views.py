@@ -129,9 +129,17 @@ def painel_processos(request):
 @tela_do_modulo
 def painel_sucesso_turma(request):
     """Exibe os indicadores do painel de sucesso por turma."""
-    nivel_selecionado = request.GET.get("nivel", "TODOS")
-    if nivel_selecionado not in ["TODOS", "MESTRADO", "DOUTORADO"]:
-        nivel_selecionado = "TODOS"
+    nivel_selecionado = request.GET.get("nivel")
+    nivel_padrao = "MESTRADO"
+
+    if nivel_selecionado and nivel_selecionado not in ["MESTRADO", "DOUTORADO"]:
+        messages.error(
+            request, 
+            "Nível inválido. Escolha entre Mestrado ou Doutorado."
+        )
+        nivel_selecionado = nivel_padrao
+    elif not nivel_selecionado:
+        nivel_selecionado = nivel_padrao
 
     turmas = calcular_painel_sucesso_turma(nivel=nivel_selecionado)
 
