@@ -3,14 +3,6 @@
 {% block title %}Painel de Sucesso por Turma | AcadFlow{% endblock %}
 
 {% block content %}
-{% if messages %}
-  <div class="alertas">
-    {% for message in messages %}
-      <div class="alert {{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-  </div>
-{% endif %}
-
 <section class="card">
     <div class="lista-cabecalho">
         <div>
@@ -36,14 +28,15 @@
 {% for turma in turmas %}
     <section class="card">
         <h2 class="section-title">Turma {{ turma.turma }}</h2>
+        <p class="muted">{{ turma.ingressantes }} ingressante{{ turma.ingressantes|pluralize }}. Os percentuais são calculados sobre os ingressantes.</p>
 
         {% if turma.dados_limitados %}
-            <p class="alerta">
-                ⚠️ Esta turma é anterior a 2026.2. O Acadflow começou em 2026.2, e desligamentos, prorrogações e defesas anteriores podem não estar registrados.
+            <p class="alert alert-info">
+                Esta turma é anterior a 2026.2. O Acadflow começou em 2026.2, e desligamentos, prorrogações e defesas anteriores podem não estar registrados.
             </p>
         {% endif %}
 
-        {% include "acompanhamento/_barras.html" with titulo="Indicadores da Turma" barras=turma.barras vazio="Sem dados para os indicadores." %}
+        {% include "acompanhamento/_barras.html" with titulo="Indicadores da turma" barras=turma.barras vazio="Sem dados para os indicadores." %}
     </section>
 {% empty %}
     <section class="card">

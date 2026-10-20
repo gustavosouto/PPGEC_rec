@@ -1,7 +1,10 @@
+from datetime import date
+
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import number_format
 
 from .decoradores import tela_do_modulo
 from .forms import MarcoCalendarioForm
@@ -10,6 +13,7 @@ from .servicos import (
     calcular_painel_docentes,
     calcular_painel_processos,
     calcular_painel_sucesso_turma,
+    validar_semestre,
 )
 from .telas import TELAS
 
@@ -82,45 +86,111 @@ def _barras(contagens):
     ]
 
 
+# Barras do painel de sucesso por turma: rótulo, chave da contagem e chave do
+# percentual sobre os ingressantes, como vêm de calcular_painel_sucesso_turma.
+INDICADORES_DA_TURMA = (
+    ("Concluídos", "concluidos", "taxa_conclusao"),
+    ("Desligados", "desligados", "taxa_desligamento"),
+    ("Trancados", "trancados", "taxa_trancamento"),
+    ("Ativos", "ativos", "taxa_ativos"),
+    ("Ativos regulares", "ativos_regulares", "taxa_ativos_regulares"),
+    ("Ativos irregulares", "ativos_irregulares", "taxa_ativos_irregulares"),
+    ("Com prorrogação", "com_prorrogacao", "percentual_prorrogacao"),
+)
+
+
+def _barras_da_turma(turma):
+    """Barras da turma com a largura igual ao percentual sobre os ingressantes.
+
+    O _barras() usa o maior total como 100%, o que deixaria cheia a barra de
+    concluídos mesmo com 45% da turma.
+    """
+    return [
+        {
+            "rotulo": rotulo,
+            "total": f"{turma[contagem]} ({number_format(turma[percentual], decimal_pos=1)}%)",
+            "largura": turma[percentual],
+        }
+        for rotulo, contagem, percentual in INDICADORES_DA_TURMA
+    ]
+
+
 @tela_do_modulo
 def painel_processos(request):
-    """Exibe os indicadores dos processos abertos no semestre escolhido."""
-    semestre = request.GET.get("semestre") or None
-    data_inicio = request.GET.get("data_inicio") or None
-    data_fim = request.GET.get("data_fim") or None
+    """Exibe os indicadores no semestre ou intervalo de datas escolhido."""
+    semestre_solicitado = request.GET.get("semestre") or None
+    data_inicio_solicitada = request.GET.get("data_inicio") or None
+    data_fim_solicitada = request.GET.get("data_fim") or None
+    filtro_por_datas = data_inicio_solicitada is not None or data_fim_solicitada is not None
+    semestre_valido = None
+    if semestre_solicitado is not None:
+        try:
+            validar_semestre(semestre_solicitado)
+        except ValueError:
+            pass
+        else:
+            semestre_valido = semestre_solicitado
 
-    # Se apenas uma das duas datas foi preenchida (data incompleta)
-    if (data_inicio and not data_fim) or (not data_inicio and data_fim):
-        messages.error(request, "Informe as datas inicial e final.")
-        data_inicio = None
-        data_fim = None
-
-    try:
-        contexto = calcular_painel_processos(
-            semestre=semestre,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-        )
-    except ValueError as e:
-        # Repassa a mensagem exata levantada pelo serviço ou fallback para semestre inválido
-        mensagem = str(e) if str(e) else "Semestre inválido. Use o formato AAAA.1 ou AAAA.2."
-        messages.error(request, mensagem)
-        contexto = calcular_painel_processos()
+    intervalo_aplicado = False
+    if filtro_por_datas:
+        try:
+            if data_inicio_solicitada is None or data_fim_solicitada is None:
+                raise ValueError("Informe as datas inicial e final.")
+            try:
+                data_inicio = date.fromisoformat(data_inicio_solicitada)
+                data_fim = date.fromisoformat(data_fim_solicitada)
+            except ValueError as erro:
+                raise ValueError("Informe datas válidas no formato DD/MM/AAAA.") from erro
+            contexto = calcular_painel_processos(
+                semestre=semestre_valido,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+            )
+            data_inicio_filtro = data_inicio
+            data_fim_filtro = data_fim
+            intervalo_aplicado = True
+        except ValueError as erro:
+            messages.error(request, str(erro))
+            contexto = calcular_painel_processos(semestre=semestre_valido)
+            data_inicio_filtro = None
+            data_fim_filtro = None
+    else:
+        try:
+            contexto = calcular_painel_processos(semestre=semestre_solicitado)
+        except ValueError:
+            messages.error(request, "Semestre inválido. Use o formato AAAA.1 ou AAAA.2.")
+            contexto = calcular_painel_processos()
+        data_inicio_filtro = None
+        data_fim_filtro = None
 
     meses = {
         f"{chave[5:]}/{chave[:4]}": total
         for chave, total in contexto["abertos_por_mes"].items()
     }
     semestres = _semestres_recentes()
-    if contexto["semestre"] not in semestres:
-        semestres.append(contexto["semestre"])
+    if intervalo_aplicado and semestre_valido is not None:
+        semestre_selecionado = semestre_valido
+    else:
+        semestre_selecionado = contexto["semestre"]
+    if semestre_selecionado is None:
+        semestre_selecionado = _semestres_recentes(quantidade=1)[0]
+    if semestre_selecionado not in semestres:
+        semestres.append(semestre_selecionado)
 
+    contagens_tipo_mes = {
+        f"{item['mes'][5:]}/{item['mes'][:4]} — {item['tipo']}": item["total"]
+        for item in contexto["por_tipo_por_mes"]
+    }
     contexto.update(
         {
             "semestres": semestres,
+            "semestre_selecionado": semestre_selecionado,
+            "data_inicio_filtro": data_inicio_filtro,
+            "data_fim_filtro": data_fim_filtro,
             "barras_tipo": _barras(contexto["por_tipo"]),
             "barras_status": _barras(contexto["por_status"]),
             "barras_mes": _barras(meses),
+            "barras_tipo_mes": _barras(contagens_tipo_mes),
         }
     )
     return render(request, "acompanhamento/painel_processos.html", contexto)
@@ -134,7 +204,7 @@ def painel_sucesso_turma(request):
 
     if nivel_selecionado and nivel_selecionado not in ["MESTRADO", "DOUTORADO"]:
         messages.error(
-            request, 
+            request,
             "Nível inválido. Escolha entre Mestrado ou Doutorado."
         )
         nivel_selecionado = nivel_padrao
@@ -142,6 +212,8 @@ def painel_sucesso_turma(request):
         nivel_selecionado = nivel_padrao
 
     turmas = calcular_painel_sucesso_turma(nivel=nivel_selecionado)
+    for turma in turmas:
+        turma["barras"] = _barras_da_turma(turma)
 
     contexto = {
         "nivel_selecionado": nivel_selecionado,
