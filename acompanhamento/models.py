@@ -149,3 +149,24 @@ class PlanilhaBaixada(models.Model):
 
     def __str__(self) -> str:
         return f"Planilha baixada por {self.baixada_por} em {self.baixada_em:%d/%m/%Y %H:%M}"
+
+
+class ExecucaoAviso(models.Model):
+    """Registro de uma execução da rotina do aviso diário.
+
+    Serve para a equipe ver que a rotina está rodando: se o Celery parar,
+    a data da última execução deixa de avançar.
+    """
+
+    executada_em = models.DateTimeField(auto_now_add=True, verbose_name="Rodou em")
+    avisos_novos = models.PositiveIntegerField(default=0, verbose_name="Avisos novos")
+    emails_enviados = models.PositiveIntegerField(default=0, verbose_name="E-mails enviados")
+    avisos_pendentes = models.PositiveIntegerField(default=0, verbose_name="Avisos pendentes")
+
+    class Meta:
+        verbose_name = "execução do aviso"
+        verbose_name_plural = "execuções do aviso"
+        ordering = ["-executada_em"]
+
+    def __str__(self) -> str:
+        return f"Aviso rodou em {self.executada_em:%d/%m/%Y %H:%M}"
