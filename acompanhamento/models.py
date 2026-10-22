@@ -130,3 +130,22 @@ class AvisoIrregularidade(models.Model):
 
     def __str__(self) -> str:
         return f"{self.trajetoria.aluno} - {self.get_marco_display()}: {self.get_situacao_display()}"
+
+
+class PlanilhaBaixada(models.Model):
+    baixada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="planilhas_acompanhamento_baixadas",
+        verbose_name="Baixada por",
+    )
+    baixada_em = models.DateTimeField(auto_now_add=True, verbose_name="Baixada em")
+    filtros = models.JSONField(default=dict, verbose_name="Filtros")
+
+    class Meta:
+        verbose_name = "planilha baixada"
+        verbose_name_plural = "planilhas baixadas"
+        ordering = ["-baixada_em"]
+
+    def __str__(self) -> str:
+        return f"Planilha baixada por {self.baixada_por} em {self.baixada_em:%d/%m/%Y %H:%M}"

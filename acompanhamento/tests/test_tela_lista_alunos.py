@@ -9,7 +9,7 @@ from django.utils import timezone
 from openpyxl import load_workbook
 
 from acompanhamento.lista_alunos import IRREGULARES, MARCO_INTERMEDIARIO
-from acompanhamento.models import MarcoCalendario
+from acompanhamento.models import MarcoCalendario, PlanilhaBaixada
 from acompanhamento.tests.test_lista_alunos import criar_aluno
 from acompanhamento.tests.test_linha_de_base import criar_perfis
 
@@ -85,6 +85,7 @@ class TelaListaAlunosTests(TestCase):
         )
 
     def test_excel_contem_apenas_alunos_correspondentes_aos_filtros(self):
+        inicio_download = timezone.now()
         resposta = self.client.get(
             self.endereco,
             {
@@ -110,6 +111,18 @@ class TelaListaAlunosTests(TestCase):
         self.assertIn(
             f'alunos_por_marco_{MARCO_INTERMEDIARIO}_{timezone.localdate().isoformat()}.xlsx',
             resposta["Content-Disposition"],
+        )
+        registro = PlanilhaBaixada.objects.get()
+        self.assertEqual(registro.baixada_por, self.perfis["servidor"])
+        self.assertGreaterEqual(registro.baixada_em, inicio_download)
+        self.assertLessEqual(registro.baixada_em, timezone.now())
+        self.assertEqual(
+            registro.filtros,
+            {
+                "nome": "Atrasado Tela Marco",
+                "marco": MARCO_INTERMEDIARIO,
+                "situacao_marco": IRREGULARES,
+            },
         )
 
     def test_excel_grava_nome_iniciado_com_igual_como_texto(self):
