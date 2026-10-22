@@ -23,12 +23,13 @@ Este manual tem como objetivo orientar a Secretaria do PPGEC no uso diário do *
 ## 2. Lista de Alunos e Acompanhamento de Prazos
 
 ### **Como Navegar e Filtrar**
-1. Na barra lateral, acesse **Coordenação > Alunos**.
-2. Utilize os filtros avançados no topo da tela para identificar discentes em atraso ou monitorar turmas:
-   * **Marco acadêmico:** Selecione o marco desejado (ex: Qualificação, Defesa, etc.).
-   * **Situação no marco:** Filtre por *Pendente*, *Cumprido* ou *Em atraso*.
+1. Na barra lateral, acesse **Cadastro > Alunos** (ou pelo caminho de navegação do sistema).
+2. Utilize os filtros no topo da tela para monitorar a situação dos discentes:
+   * **Marco acadêmico:** Escolha entre as opções disponíveis: **"Projeto de dissertação ou qualificação"** ou **"Defesa"**.
+   * **Situação no marco:** Selecione o status do discente. As opções incluem: *Irregulares* (que agrupa todas as pendências e atrasos), *Regular*, *Irregular com chance*, *Irregular sem chance*, *Cumprido*, *Sem prazo cadastrado* e *Não foi possível calcular*.
+   > **Dica de Uso:** Para identificar rapidamente discentes em atraso, a secretaria deve selecionar a opção **"Irregulares"**.
    * **Semestre do marco:** Digite o período referente (ex: `2026.1`).
-3. Para exportar os dados exibidos, clique no botão **Baixar em Excel**.
+3. **Exportação de Dados:** Após selecionar um **Marco acadêmico**, o botão **Baixar em Excel** ficará visível na tela. Clique nele para gerar e baixar a planilha contendo apenas os alunos filtrados.
 
 ![Lista de Alunos](imagens/07-lista-de-alunos.png)
 
