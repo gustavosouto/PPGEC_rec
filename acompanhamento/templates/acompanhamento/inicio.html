@@ -12,5 +12,17 @@
     {% else %}
     <p>Ainda não há telas disponíveis.</p>
     {% endif %}
+    <p class="muted">
+        {% if not aviso_ativo %}
+        O aviso diário de alunos atrasados está desligado.
+        {% elif ultima_execucao_aviso %}
+        Último aviso rodou em {{ ultima_execucao_aviso.executada_em|date:"d/m/Y H:i" }}:
+        {{ ultima_execucao_aviso.avisos_novos }} aviso(s) novo(s),
+        {{ ultima_execucao_aviso.emails_enviados }} e-mail(s) enviado(s),
+        {{ ultima_execucao_aviso.avisos_pendentes }} pendente(s).
+        {% else %}
+        O aviso diário ainda não rodou.
+        {% endif %}
+    </p>
 </section>
 {% endblock %}

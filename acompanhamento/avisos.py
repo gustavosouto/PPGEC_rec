@@ -20,7 +20,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from acompanhamento.lista_alunos import _trajetorias_ativas
-from acompanhamento.models import AvisoIrregularidade
+from acompanhamento.models import AvisoIrregularidade, ExecucaoAviso
 from acompanhamento.situacao import (
     IRREGULAR_COM_CHANCE,
     IRREGULAR_SEM_CHANCE,
@@ -47,6 +47,11 @@ def rodar_aviso_diario(data_referencia=None):
     """
     novos = atualizar_avisos(data_referencia)
     enviados = enviar_email(avisos_pendentes())
+    ExecucaoAviso.objects.create(
+        avisos_novos=len(novos),
+        emails_enviados=enviados,
+        avisos_pendentes=contar_pendentes(),
+    )
     return {"avisos_novos": len(novos), "emails_enviados": enviados}
 
 
@@ -134,6 +139,38 @@ def avisos_pendentes():
     )
 
 
+def contar_pendentes():
+    """Quantos avisos abertos ainda não foram enviados por e-mail."""
+    return AvisoIrregularidade.objects.filter(
+        encerrado_em__isnull=True, enviado_em__isnull=True
+    ).count()
+
+
+def montar_email(avisos):
+    """Assunto e corpo (HTML) do e-mail com os avisos. Não envia nada.
+
+    Enquanto nenhum aviso tiver saído, o e-mail é o levantamento inicial:
+    traz todos os alunos que já estavam atrasados quando o aviso foi ligado.
+    """
+    levantamento_inicial = not AvisoIrregularidade.objects.filter(
+        enviado_em__isnull=False
+    ).exists()
+    alunos = len({aviso.trajetoria.aluno_id for aviso in avisos})
+    assunto = f"[PPGEC] {alunos} aluno(s) com prazo vencido"
+    if levantamento_inicial:
+        assunto = f"[PPGEC] Levantamento inicial: {alunos} aluno(s) com prazo vencido"
+
+    html = render_to_string(
+        "acompanhamento/emails/aviso_irregularidade.html",
+        {
+            "avisos": avisos,
+            "site_url": settings.SITE_URL,
+            "levantamento_inicial": levantamento_inicial,
+        },
+    )
+    return assunto, html
+
+
 def enviar_email(avisos):
     """Manda um e-mail com os avisos. Devolve 1 se enviou e 0 se não.
 
@@ -156,24 +193,7 @@ def enviar_email(avisos):
         )
         return 0
 
-    # Enquanto nenhum aviso tiver saído, o e-mail é o levantamento inicial:
-    # traz todos os alunos que já estavam atrasados quando o aviso foi ligado.
-    levantamento_inicial = not AvisoIrregularidade.objects.filter(
-        enviado_em__isnull=False
-    ).exists()
-    alunos = len({aviso.trajetoria.aluno_id for aviso in avisos})
-    assunto = f"[PPGEC] {alunos} aluno(s) com prazo vencido"
-    if levantamento_inicial:
-        assunto = f"[PPGEC] Levantamento inicial: {alunos} aluno(s) com prazo vencido"
-
-    html = render_to_string(
-        "acompanhamento/emails/aviso_irregularidade.html",
-        {
-            "avisos": avisos,
-            "site_url": settings.SITE_URL,
-            "levantamento_inicial": levantamento_inicial,
-        },
-    )
+    assunto, html = montar_email(avisos)
 
     erro = ""
     for tentativa in range(1, TENTATIVAS_ENVIO + 1):
