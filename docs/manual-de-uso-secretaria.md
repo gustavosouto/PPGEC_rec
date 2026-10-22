@@ -9,13 +9,32 @@ Este manual tem como objetivo orientar a Secretaria do PPGEC no uso diário do *
 ### **Como Navegar**
 1. Na barra lateral esquerda do **AcadFlow**, localize o grupo **Coordenação**.
 2. Clique no item **Acompanhamento (Prazos e indicadores dos alunos)**.
-3. Você será direcionado para a central de navegação que reúne os links para todas as telas do módulo.
+3. Você será direcionado para a central de navegação que reúne os links para todas as telas do módulo:
+   * **Painel de Docentes**
+   * **Painel de Processos**
+   * **Carga de orientação**
+   * **Calendário de Marcos**
+   * **Painel de sucesso por turma**
 
 ![Central de Navegação do Acompanhamento](imagens/01-menu-acompanhamento.png)
 
 ---
 
-## 2. Painel de Docentes e Orientandos
+## 2. Lista de Alunos e Acompanhamento de Prazos
+
+### **Como Navegar e Filtrar**
+1. Na barra lateral, acesse **Coordenação > Alunos**.
+2. Utilize os filtros avançados no topo da tela para identificar discentes em atraso ou monitorar turmas:
+   * **Marco acadêmico:** Selecione o marco desejado (ex: Qualificação, Defesa, etc.).
+   * **Situação no marco:** Filtre por *Pendente*, *Cumprido* ou *Em atraso*.
+   * **Semestre do marco:** Digite o período referente (ex: `2026.1`).
+3. Para exportar os dados exibidos, clique no botão **Baixar em Excel**.
+
+![Lista de Alunos](imagens/07-lista-de-alunos.png)
+
+---
+
+## 3. Painel de Docentes
 
 ### **Como Navegar e Filtrar**
 1. Acesse o **Painel de Docentes** pela central de **Acompanhamento**.
@@ -26,11 +45,20 @@ Este manual tem como objetivo orientar a Secretaria do PPGEC no uso diário do *
 ### **Como Interpretar os Dados**
 * **Cards Superiores:** Exibem o quantitativo total de docentes ativos, a divisão entre permanentes e colaboradores (com suas respectivas porcentagens), além da classificação entre docentes internos e externos à UPE.
 * **Distribuição por Polo:** Exibe graficamente o percentual e a quantidade de professores em cada polo do programa.
-* **Listagem de Orientandos:** Ao clicar sobre o card de um professor, a lista se expande revelando os alunos vinculados, o nível de pós-graduação (Mestrado/Doutorado) e o número de matrícula.
 
 ---
 
-## 3. Painel de Processos
+## 4. Carga de Orientação
+
+### **Como Navegar e Interpretar**
+1. Acesse **Carga de orientação** através da página inicial do módulo de Acompanhamento.
+2. O painel apresenta o quantitativo de orientações, coorientações e supervisões de pós-doutorado vinculadas a cada docente do programa, permitindo o acompanhamento da distribuição de discentes entre o corpo docente.
+
+![Carga de Orientação](imagens/06-carga-de-orientacao.png)
+
+---
+
+## 5. Painel de Processos
 
 ### **Como Navegar e Filtrar**
 1. Clique em **Painel de Processos** na central de Acompanhamento.
@@ -42,14 +70,15 @@ Este manual tem como objetivo orientar a Secretaria do PPGEC no uso diário do *
 ![Painel de Processos](imagens/03-painel-processos.png)
 
 ### **Como Interpretar os Dados**
-* **Resumo Superior:** Mostra a contagem de **Processos abertos**, **Em atraso** e **Finalizados no período**.
-* **Por Tipo:** Gráfico de barras indicando a quantidade de processos por categoria (ex: *Aproveitamento de Créditos ou Dispensa de Disciplina*, *Prorrogação de Prazo*, etc.).
+* **Resumo Superior:** Mostra a contagem de **Processos abertos**, **Em atraso** e o **Tempo médio (em dias) até a finalização** (exibindo "Sem dados" quando nenhum processo foi concluído no período).
+* **Por Tipo:** Gráfico de barras indicando a quantidade de processos por categoria.
 * **Por Tipo e Mês:** Detalhamento cronológico da entrada dos processos por mês e tipo.
 * **Por Status:** Distribuição dos requerimentos conforme a fase de tramitação atual (ex: *Em análise*, *Aguardando documento*).
+* **Abertos por mês:** Visualização em barras com o total de processos abertos em cada mês do período selecionado.
 
 ---
 
-## 4. Calendário de Marcos
+## 6. Calendário de Marcos
 
 ### **Como Navegar e Cadastrar**
 1. Selecione **Calendário de Marcos** no menu de Acompanhamento.
@@ -66,7 +95,7 @@ Este manual tem como objetivo orientar a Secretaria do PPGEC no uso diário do *
 
 ---
 
-## 5. Painel de Sucesso por Turma
+## 7. Painel de Sucesso por Turma
 
 ### **Como Navegar e Filtrar**
 1. Clique em **Painel de sucesso por turma**.
@@ -78,5 +107,5 @@ Este manual tem como objetivo orientar a Secretaria do PPGEC no uso diário do *
 * **Aviso de Dados Limitados:** Em turmas anteriores a `2026.2`, um alerta informativo é exibido comunicando que registros históricos de desligamentos, prorrogações ou defesas anteriores ao início do uso do AcadFlow podem não estar cadastrados.
 * **Total de Ingressantes:** Apresenta o número absoluto de alunos cadastrados naquela turma de ingresso.
 * **Indicadores em Barras (Proporcionais):**
-  * **Concluídos, Desligados, Trancados e Ativos:** A largura de cada barra representa o percentual exato calculated em relação ao total de ingressantes da turma.
+  * **Concluídos, Desligados, Trancados e Ativos:** A largura de cada barra representa o percentual exato calculado em relação ao total de ingressantes da turma.
   * **Ativos Regulares, Ativos Irregulares e Com Prorrogação:** Acompanhamento detalhado do status atual dos alunos que permanecem matriculados no programa.
