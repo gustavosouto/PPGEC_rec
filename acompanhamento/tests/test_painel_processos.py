@@ -132,6 +132,31 @@ class PainelProcessosServicoTests(TestCase):
         self.assertEqual(dados["total_processos"], 1)
         self.assertEqual(dados["abertos_por_mes"], {"9999-12": 1})
 
+    def test_data_final_do_intervalo_permanece_apos_calcular_tempo_medio(self):
+        processo = Processo.objects.create(
+            usuario_criado_por=self.servidor,
+            aluno_interessado=self.aluno,
+            tipo=Processo.TipoProcesso.OUTRO,
+            status=Processo.StatusProcesso.FINALIZADO,
+            assunto="Processo finalizado",
+            descricao="Teste",
+            setor_atual=self.setor,
+        )
+        data_inicio_processo = timezone.make_aware(datetime(2025, 1, 10))
+        data_finalizacao = timezone.make_aware(datetime(2025, 1, 15))
+        Processo.objects.filter(pk=processo.pk).update(
+            data_criacao=data_inicio_processo,
+            finalizado_em=data_finalizacao,
+        )
+
+        dados = calcular_painel_processos(
+            data_inicio=date(2025, 1, 1),
+            data_fim=date(2025, 1, 31),
+        )
+
+        self.assertEqual(dados["data_fim"], date(2025, 1, 31))
+        self.assertEqual(dados["tempo_medio_dias"], 5.0)
+
     def test_quantidade_por_tipo_e_status(self):
         """Verifica a contagem correta por tipo e por status de processo."""
         Processo.objects.create(
