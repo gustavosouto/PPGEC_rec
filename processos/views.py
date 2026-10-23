@@ -2691,7 +2691,22 @@ def alunos_view(request):
             linhas_marco = []
             filtros_marco_validos = False
         if exportar_excel and filtros_marco_validos:
-            return _resposta_xlsx_alunos_por_marco(linhas_marco, marco, MARCOS[marco])
+            from acompanhamento.models import PlanilhaBaixada
+
+            resposta = _resposta_xlsx_alunos_por_marco(
+                linhas_marco,
+                marco,
+                MARCOS[marco],
+            )
+            PlanilhaBaixada.objects.create(
+                baixada_por=request.user,
+                filtros={
+                    parametro: valor.strip()
+                    for parametro in filtros_rotulos
+                    if (valor := request.GET.get(parametro, "").strip())
+                },
+            )
+            return resposta
         for linha in linhas_marco:
             linha.aluno.trajetoria_atual = linha.trajetoria
             linha.aluno.linha_marco = linha
