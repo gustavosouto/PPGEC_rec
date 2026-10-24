@@ -6,9 +6,10 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import number_format
 
+from .chave import aviso_ativo
 from .decoradores import tela_do_modulo
 from .forms import MarcoCalendarioForm
-from .models import MarcoCalendario
+from .models import ExecucaoAviso, MarcoCalendario
 from .servicos import (
     calcular_painel_docentes,
     calcular_painel_processos,
@@ -22,7 +23,12 @@ from .telas import TELAS
 def inicio(request):
     """Página inicial do módulo, com a lista das telas disponíveis."""
     telas = [{"titulo": titulo, "endereco": reverse(rota)} for titulo, rota in TELAS]
-    return render(request, "acompanhamento/inicio.html", {"telas": telas})
+    contexto = {
+        "telas": telas,
+        "aviso_ativo": aviso_ativo(),
+        "ultima_execucao_aviso": ExecucaoAviso.objects.first() if aviso_ativo() else None,
+    }
+    return render(request, "acompanhamento/inicio.html", contexto)
 
 
 @tela_do_modulo
