@@ -234,9 +234,9 @@ def calcular_painel_processos(semestre=None, data_inicio=None, data_fim=None):
     )
     tempos_dias = []
     for proc in finalizados:
-        data_fim = proc.finalizado_em or proc.atualizado_em
-        if data_fim and proc.data_criacao:
-            diferenca = (data_fim - proc.data_criacao).total_seconds() / 86400
+        data_finalizacao = proc.finalizado_em or proc.atualizado_em
+        if data_finalizacao and proc.data_criacao:
+            diferenca = (data_finalizacao - proc.data_criacao).total_seconds() / 86400
             if diferenca >= 0:
                 tempos_dias.append(diferenca)
 
