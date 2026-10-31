@@ -115,6 +115,11 @@ class ListaAlunosPorMarcoTests(TestCase):
         self.assertEqual(situacoes["Elisa Sem Chance"], IRREGULAR_SEM_CHANCE)
         self.assertEqual(situacoes["Igor Doutorado"], SEM_PRAZO)
 
+    def test_as_duas_situacoes_irregulares_sao_exibidas_com_o_mesmo_rotulo(self):
+        displays = {linha.aluno.nome: linha.situacao_display for linha in self.listar()}
+        self.assertEqual(displays["Bruno Com Chance"], "Irregular")
+        self.assertEqual(displays["Elisa Sem Chance"], "Irregular")
+
     def test_atalho_irregulares_traz_as_duas_situacoes_irregulares(self):
         self.assertEqual(
             nomes(self.listar(situacao=IRREGULARES)),
@@ -122,9 +127,7 @@ class ListaAlunosPorMarcoTests(TestCase):
         )
 
     def test_filtro_por_uma_situacao(self):
-        self.assertEqual(
-            nomes(self.listar(situacao=IRREGULAR_COM_CHANCE)), ["Bruno Com Chance"]
-        )
+        self.assertEqual(nomes(self.listar(situacao=REGULAR)), ["Ana Regular"])
 
     def test_filtro_pelo_semestre_do_marco(self):
         self.assertEqual(
@@ -146,13 +149,19 @@ class ListaAlunosPorMarcoTests(TestCase):
         self.assertEqual(bruno.semestre_marco, "2027.1")
 
     def test_filtros_invalidos_sao_recusados(self):
-        for filtros in (
-            {"marco": "outro"},
-            {"situacao": "atrasado"},
-            {"semestre_marco": "2026-2"},
+        for filtros, mensagem in (
+            ({"marco": "outro"}, "Marco inválido."),
+            ({"situacao": "atrasado"}, "Situação inválida."),
+            ({"situacao": IRREGULAR_COM_CHANCE}, "Situação inválida."),
+            ({"situacao": IRREGULAR_SEM_CHANCE}, "Situação inválida."),
+            (
+                {"semestre_marco": "2026-2"},
+                "Semestre do marco inválido. Use o formato AAAA.1 ou AAAA.2.",
+            ),
         ):
-            with self.subTest(filtros=filtros), self.assertRaises(ValueError):
+            with self.subTest(filtros=filtros), self.assertRaises(ValueError) as erro:
                 self.listar(**filtros)
+            self.assertEqual(str(erro.exception), mensagem)
 
     def test_falha_em_um_aluno_nao_derruba_a_lista(self):
         original = nucleo.calcular_situacao_trajetoria
