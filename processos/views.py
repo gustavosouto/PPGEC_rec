@@ -2648,10 +2648,9 @@ def alunos_view(request):
     if acompanhamento_ativo:
         from acompanhamento.lista_alunos import (
             DEFESA,
-            IRREGULARES,
             MARCO_INTERMEDIARIO,
             MARCOS,
-            SITUACOES,
+            SITUACOES_FILTRO,
             listar_alunos_por_marco,
         )
 
@@ -2663,16 +2662,13 @@ def alunos_view(request):
             (MARCO_INTERMEDIARIO, MARCOS[MARCO_INTERMEDIARIO]),
             (DEFESA, MARCOS[DEFESA]),
         )
-        situacoes_marco = (
-            (IRREGULARES, "Irregulares"),
-            *SITUACOES.items(),
-        )
+        situacoes_marco = tuple(SITUACOES_FILTRO.items())
         filtros_rotulos.update(
             {
                 "marco": ("Marco", MARCOS.get),
                 "situacao_marco": (
                     "Situação no marco",
-                    dict(((IRREGULARES, "Irregulares"), *SITUACOES.items())).get,
+                    SITUACOES_FILTRO.get,
                 ),
                 "semestre_marco": ("Semestre do marco", None),
             }

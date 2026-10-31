@@ -46,8 +46,29 @@ class TelaListaAlunosTests(TestCase):
 
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Atrasado Tela Marco")
-        self.assertContains(resposta, "Irregular sem chance")
+        self.assertContains(resposta, "Irregular")
+        self.assertNotContains(resposta, "com chance")
+        self.assertNotContains(resposta, "sem chance")
         self.assertContains(resposta, "Baixar em Excel")
+        filtros = {
+            filtro["titulo"]: filtro["valor"]
+            for filtro in resposta.context["filtros_ativos"]
+        }
+        self.assertEqual(filtros["Situação no marco"], "Irregular")
+
+    def test_opcoes_de_situacao_no_marco(self):
+        resposta = self.client.get(self.endereco, {"marco": MARCO_INTERMEDIARIO})
+
+        self.assertEqual(
+            resposta.context["situacoes_marco"],
+            (
+                ("irregulares", "Irregular"),
+                ("regular", "Regular"),
+                ("cumprido", "Cumprido"),
+                ("sem_prazo", "Sem prazo cadastrado"),
+                ("nao_calculado", "Não foi possível calcular"),
+            ),
+        )
 
     @override_settings(ACOMPANHAMENTO_ATIVO=False)
     def test_parametros_de_marco_sao_ignorados_com_modulo_desligado(self):
@@ -106,7 +127,7 @@ class TelaListaAlunosTests(TestCase):
 
         self.assertEqual(linhas[0][1], "Nome")
         self.assertEqual(linhas[1][1], "Atrasado Tela Marco")
-        self.assertEqual(linhas[1][8], "Irregular sem chance")
+        self.assertEqual(linhas[1][8], "Irregular")
         self.assertEqual(len(linhas), 2)
         self.assertIn(
             f'alunos_por_marco_{MARCO_INTERMEDIARIO}_{timezone.localdate().isoformat()}.xlsx',

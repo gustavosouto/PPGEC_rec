@@ -37,11 +37,19 @@ MARCOS = {
 IRREGULARES = "irregulares"
 SITUACOES = {
     REGULAR: "Regular",
-    IRREGULAR_COM_CHANCE: "Irregular com chance",
-    IRREGULAR_SEM_CHANCE: "Irregular sem chance",
+    IRREGULAR_COM_CHANCE: "Irregular",
+    IRREGULAR_SEM_CHANCE: "Irregular",
     CUMPRIDO: "Cumprido",
     SEM_PRAZO: "Sem prazo cadastrado",
     NAO_CALCULADO: "Não foi possível calcular",
+}
+SITUACOES_FILTRO = {
+    IRREGULARES: "Irregular",
+    **{
+        situacao: rotulo
+        for situacao, rotulo in SITUACOES.items()
+        if situacao not in (IRREGULAR_COM_CHANCE, IRREGULAR_SEM_CHANCE)
+    },
 }
 
 _FORMATO_SEMESTRE = re.compile(r"^\d{4}\.[12]$")
@@ -64,7 +72,7 @@ def validar_filtros(marco, situacao="", semestre_marco=""):
     que a tela mostra quando algum deles é inválido."""
     if marco not in MARCOS:
         raise ValueError("Marco inválido.")
-    if situacao and situacao != IRREGULARES and situacao not in SITUACOES:
+    if situacao and situacao not in SITUACOES_FILTRO:
         raise ValueError("Situação inválida.")
     if semestre_marco and not _FORMATO_SEMESTRE.match(semestre_marco):
         raise ValueError("Semestre do marco inválido. Use o formato AAAA.1 ou AAAA.2.")
@@ -106,8 +114,7 @@ def listar_alunos_por_marco(
 
     alunos: queryset de Aluno com os filtros da tela já aplicados.
     marco: MARCO_INTERMEDIARIO ou DEFESA.
-    situacao: uma das chaves de SITUACOES, IRREGULARES (as duas situações
-    irregulares) ou vazio para todas.
+    situacao: uma das chaves de SITUACOES_FILTRO ou vazio para todas.
     semestre_marco: "AAAA.1" ou "AAAA.2"; mantém só quem tem a data limite
     do marco nesse semestre.
     data_referencia: data do cálculo; sem ela, vale o dia de hoje.
