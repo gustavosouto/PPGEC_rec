@@ -25,7 +25,7 @@ Este manual tem como objetivo orientar a Secretaria do PPGEC no uso diário do *
 ### **Como Navegar e Filtrar**
 1. Na barra lateral, acesse **Cadastro > Alunos** (ou pelo caminho de navegação do sistema).
 2. Utilize os filtros no topo da tela para monitorar a situação dos discentes:
-   * **Marco acadêmico:** Escolha entre as opções disponíveis: **"Projeto de dissertação ou qualificação"** ou **"Defesa"**.
+   * **Marco acadêmico:** Escolha entre **"Projeto de dissertação ou qualificação"**, **"Defesa"** ou **"Qualquer marco"**. Esta última opção reúne, em uma linha por aluno, quem está irregular em um ou nos dois marcos; use-a com a situação **"Irregular"** e sem preencher o semestre.
    * **Situação no marco:** Selecione o status do discente. As opções incluem: *Irregular* (que agrupa as duas situações irregulares), *Regular*, *Cumprido*, *Sem prazo cadastrado* e *Não foi possível calcular*. Na lista e no Excel, as situações irregulares são exibidas como *Irregular*.
    > **Dica de Uso:** Para identificar rapidamente discentes em atraso, a secretaria deve selecionar a opção **"Irregular"**.
    * **Semestre do marco:** Digite o período referente (ex: `2026.1`).
