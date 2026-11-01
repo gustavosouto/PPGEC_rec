@@ -146,6 +146,7 @@
                         <th scope="col">Orientador</th>
                         <th scope="col">Trajetória</th>
                         {% if marco_selecionado %}
+                            {% if marco_qualquer %}<th scope="col">Marco</th>{% endif %}
                             <th scope="col">Situação no marco</th>
                             <th scope="col">Data limite</th>
                             <th scope="col">Reapresentação até</th>
@@ -174,11 +175,38 @@
                                 {% endif %}
                             </td>
                             {% if marco_selecionado %}
+                                {% if marco_qualquer %}
+                                    <td>{{ aluno.linha_marco.marco_display }}</td>
+                                {% endif %}
                                 <td>{{ aluno.linha_marco.situacao_display }}</td>
-                                <td class="celula-numero celula-apoio">{{ aluno.linha_marco.resultado.data_limite|date:"d/m/Y"|default:"—" }}</td>
-                                <td class="celula-numero celula-apoio">{{ aluno.linha_marco.resultado.prazo_reapresentacao|date:"d/m/Y"|default:"—" }}</td>
+                                <td class="celula-numero celula-apoio">
+                                    {% if marco_qualquer %}
+                                        {% for nome_marco, resultado_marco in aluno.linha_marco.resultados_marco %}
+                                            {{ nome_marco }}: {{ resultado_marco.data_limite|date:"d/m/Y"|default:"—" }}<br>
+                                        {% endfor %}
+                                    {% else %}
+                                        {{ aluno.linha_marco.resultado.data_limite|date:"d/m/Y"|default:"—" }}
+                                    {% endif %}
+                                </td>
+                                <td class="celula-numero celula-apoio">
+                                    {% if marco_qualquer %}
+                                        {% for nome_marco, resultado_marco in aluno.linha_marco.resultados_marco %}
+                                            {{ nome_marco }}: {{ resultado_marco.prazo_reapresentacao|date:"d/m/Y"|default:"—" }}<br>
+                                        {% endfor %}
+                                    {% else %}
+                                        {{ aluno.linha_marco.resultado.prazo_reapresentacao|date:"d/m/Y"|default:"—" }}
+                                    {% endif %}
+                                </td>
                                 <td class="celula-numero celula-apoio">{{ aluno.linha_marco.semestre_marco|default:"—" }}</td>
-                                <td class="celula-apoio">{{ aluno.linha_marco.resultado.motivo|default:"—" }}</td>
+                                <td class="celula-apoio">
+                                    {% if marco_qualquer %}
+                                        {% for nome_marco, resultado_marco in aluno.linha_marco.resultados_marco %}
+                                            {{ nome_marco }}: {{ resultado_marco.motivo|default:"—" }}<br>
+                                        {% endfor %}
+                                    {% else %}
+                                        {{ aluno.linha_marco.resultado.motivo|default:"—" }}
+                                    {% endif %}
+                                </td>
                             {% endif %}
                         </tr>
                     {% endfor %}

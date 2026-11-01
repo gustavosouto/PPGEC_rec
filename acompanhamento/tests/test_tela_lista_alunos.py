@@ -8,7 +8,12 @@ from django.urls import reverse
 from django.utils import timezone
 from openpyxl import load_workbook
 
-from acompanhamento.lista_alunos import IRREGULARES, MARCO_INTERMEDIARIO
+from acompanhamento.lista_alunos import (
+    IRREGULARES,
+    MARCO_INTERMEDIARIO,
+    QUALQUER_MARCO,
+    cartao_alunos_irregulares,
+)
 from acompanhamento.models import MarcoCalendario, PlanilhaBaixada
 from acompanhamento.tests.test_lista_alunos import criar_aluno
 from acompanhamento.tests.test_linha_de_base import criar_perfis
@@ -56,6 +61,13 @@ class TelaListaAlunosTests(TestCase):
         }
         self.assertEqual(filtros["Situação no marco"], "Irregular")
 
+    def test_total_do_cartao_e_o_da_lista_aberta_pelo_endereco(self):
+        cartao = cartao_alunos_irregulares()
+        resposta = self.client.get(cartao["endereco"])
+
+        self.assertGreaterEqual(cartao["total"], 1)
+        self.assertEqual(resposta.context["pagina"].paginator.count, cartao["total"])
+
     def test_opcoes_de_situacao_no_marco(self):
         resposta = self.client.get(self.endereco, {"marco": MARCO_INTERMEDIARIO})
 
@@ -69,6 +81,55 @@ class TelaListaAlunosTests(TestCase):
                 ("nao_calculado", "Não foi possível calcular"),
             ),
         )
+
+    def test_opcao_qualquer_marco_e_coluna_indicam_os_marcos_irregulares(self):
+        criar_aluno(
+            "Irregular nos Dois Marcos",
+            data_ingresso=date(2020, 1, 1),
+            data_limite_qualificacao=date(2025, 5, 1),
+            prazo_qualificacao="2025.1",
+        )
+        resposta = self.client.get(
+            self.endereco,
+            {
+                "nome": "Irregular nos Dois Marcos",
+                "marco": QUALQUER_MARCO,
+                "situacao_marco": IRREGULARES,
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.context["marcos"][-1], (QUALQUER_MARCO, "Qualquer marco"))
+        self.assertEqual(resposta.context["pagina"].paginator.count, 1)
+        self.assertContains(resposta, "Projeto de dissertação ou qualificação e Defesa")
+        self.assertContains(resposta, "Situação no marco")
+
+    def test_qualquer_marco_recusa_situacao_ou_semestre_incompativeis(self):
+        for parametros, mensagem in (
+            (
+                {"marco": QUALQUER_MARCO},
+                '“Qualquer marco” só aceita a situação “Irregular”.',
+            ),
+            (
+                {"marco": QUALQUER_MARCO, "situacao_marco": "regular"},
+                '“Qualquer marco” só aceita a situação “Irregular”.',
+            ),
+            (
+                {
+                    "marco": QUALQUER_MARCO,
+                    "situacao_marco": IRREGULARES,
+                    "semestre_marco": "2025.1",
+                },
+                'Não é possível filtrar “Qualquer marco” por semestre.',
+            ),
+        ):
+            with self.subTest(parametros=parametros):
+                resposta = self.client.get(self.endereco, parametros)
+                self.assertEqual(resposta.status_code, 200)
+                self.assertEqual(
+                    [str(item) for item in resposta.context["messages"]],
+                    [mensagem],
+                )
 
     @override_settings(ACOMPANHAMENTO_ATIVO=False)
     def test_parametros_de_marco_sao_ignorados_com_modulo_desligado(self):
@@ -145,6 +206,30 @@ class TelaListaAlunosTests(TestCase):
                 "situacao_marco": IRREGULARES,
             },
         )
+
+    def test_excel_qualquer_marco_tem_os_marcos_irregulares_na_linha(self):
+        criar_aluno(
+            "Excel Irregular nos Dois",
+            data_ingresso=date(2020, 1, 1),
+            data_limite_qualificacao=date(2025, 5, 1),
+            prazo_qualificacao="2025.1",
+        )
+        resposta = self.client.get(
+            self.endereco,
+            {
+                "nome": "Excel Irregular nos Dois",
+                "marco": QUALQUER_MARCO,
+                "situacao_marco": IRREGULARES,
+                "exportar": "xlsx",
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        workbook = load_workbook(BytesIO(resposta.content), read_only=True)
+        linhas = list(workbook.active.values)
+        self.assertEqual(len(linhas), 2)
+        self.assertEqual(linhas[1][7], "Projeto de dissertação ou qualificação e Defesa")
+        self.assertEqual(linhas[1][8], "Irregular")
 
     def test_excel_grava_nome_iniciado_com_igual_como_texto(self):
         criar_aluno(

@@ -2632,6 +2632,7 @@ def alunos_view(request):
     linhas_marco = None
     filtros_marco_validos = True
     exportar_excel = False
+    marco_qualquer = False
     marcos = ()
     situacoes_marco = ()
     filtros_rotulos = {
@@ -2647,21 +2648,18 @@ def alunos_view(request):
 
     if acompanhamento_ativo:
         from acompanhamento.lista_alunos import (
-            DEFESA,
-            MARCO_INTERMEDIARIO,
             MARCOS,
+            QUALQUER_MARCO,
             SITUACOES_FILTRO,
             listar_alunos_por_marco,
         )
 
         marco = request.GET.get("marco", "").strip()
+        marco_qualquer = marco == QUALQUER_MARCO
         situacao_marco = request.GET.get("situacao_marco", "").strip()
         semestre_marco = request.GET.get("semestre_marco", "").strip()
         exportar_excel = request.GET.get("exportar") == "xlsx"
-        marcos = (
-            (MARCO_INTERMEDIARIO, MARCOS[MARCO_INTERMEDIARIO]),
-            (DEFESA, MARCOS[DEFESA]),
-        )
+        marcos = tuple(MARCOS.items())
         situacoes_marco = tuple(SITUACOES_FILTRO.items())
         filtros_rotulos.update(
             {
@@ -2747,6 +2745,7 @@ def alunos_view(request):
             "filtro_situacao_marco": situacao_marco,
             "filtro_semestre_marco": semestre_marco,
             "marco_selecionado": bool(marco),
+            "marco_qualquer": marco_qualquer,
             "total_alunos_filtrados": pagina.paginator.count,
             "status_list": Aluno.StatusAluno.choices,
             "nivel_list": Aluno.NivelCurso.choices,
@@ -2761,6 +2760,8 @@ def alunos_view(request):
 
 
 def _resposta_xlsx_alunos_por_marco(linhas, marco, marco_label):
+    from acompanhamento.lista_alunos import QUALQUER_MARCO
+
     workbook = Workbook()
     planilha = workbook.active
     planilha.title = "Alunos"
@@ -2786,6 +2787,33 @@ def _resposta_xlsx_alunos_por_marco(linhas, marco, marco_label):
             celula.data_type = "s"
     for linha in linhas:
         resultado = linha.resultado
+        if marco == QUALQUER_MARCO:
+            data_limite = "; ".join(
+                f"{nome}: {resultado_marco.data_limite.strftime('%d/%m/%Y') if resultado_marco.data_limite else ''}"
+                for nome, resultado_marco in linha.resultados_marco
+            )
+            prazo_reapresentacao = "; ".join(
+                f"{nome}: {resultado_marco.prazo_reapresentacao.strftime('%d/%m/%Y') if resultado_marco.prazo_reapresentacao else ''}"
+                for nome, resultado_marco in linha.resultados_marco
+            )
+            motivo = "; ".join(
+                f"{nome}: {resultado_marco.motivo}"
+                for nome, resultado_marco in linha.resultados_marco
+            )
+            marco_da_linha = linha.marco_display
+        else:
+            data_limite = (
+                resultado.data_limite.strftime("%d/%m/%Y")
+                if resultado.data_limite
+                else ""
+            )
+            prazo_reapresentacao = (
+                resultado.prazo_reapresentacao.strftime("%d/%m/%Y")
+                if resultado.prazo_reapresentacao
+                else ""
+            )
+            motivo = resultado.motivo
+            marco_da_linha = marco_label
         planilha.append(
             [
                 linha.aluno.matricula,
@@ -2795,12 +2823,12 @@ def _resposta_xlsx_alunos_por_marco(linhas, marco, marco_label):
                 linha.trajetoria.get_nivel_curso_display(),
                 linha.trajetoria.ingresso,
                 linha.trajetoria.orientador.nome if linha.trajetoria.orientador else "",
-                marco_label,
+                marco_da_linha,
                 linha.situacao_display,
-                resultado.data_limite.strftime("%d/%m/%Y") if resultado.data_limite else "",
-                resultado.prazo_reapresentacao.strftime("%d/%m/%Y") if resultado.prazo_reapresentacao else "",
+                data_limite,
+                prazo_reapresentacao,
                 linha.semestre_marco,
-                resultado.motivo,
+                motivo,
             ]
         )
         for celula in planilha[planilha.max_row]:
