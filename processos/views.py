@@ -2012,6 +2012,11 @@ def home_view(request):
                 status_aluno=Aluno.StatusAluno.EM_AVALIACAO
             ).count(),
         }
+        # O import fica aqui dentro para o modulo desligado nao ser carregado.
+        if settings.ACOMPANHAMENTO_ATIVO:
+            from acompanhamento.lista_alunos import cartao_alunos_irregulares
+
+            context["cartao_irregulares"] = cartao_alunos_irregulares()
 
     if request.user.tipo_usuario == User.TipoUsuario.ALUNO:
         aluno = getattr(request.user, "aluno", None)
