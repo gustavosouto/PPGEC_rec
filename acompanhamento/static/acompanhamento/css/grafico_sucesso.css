@@ -1,0 +1,122 @@
+.grafico-sucesso-container {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 24px;
+    margin-top: 16px;
+    margin-bottom: 24px;
+}
+
+.grafico-alerta-espacado {
+    margin-top: 16px;
+}
+
+.grafico-legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.legenda-cor {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    margin-right: 8px;
+}
+
+/* 7 Cores das Categorias */
+.cor-1 { background-color: #059669; }
+.cor-2 { background-color: #dc2626; }
+.cor-3 { background-color: #d97706; }
+.cor-4 { background-color: #2563eb; }
+.cor-5 { background-color: #60a5fa; }
+.cor-6 { background-color: #7c3aed; }
+.cor-7 { background-color: #6b7280; }
+
+.grafico-area {
+    display: flex;
+    height: 320px;
+    align-items: flex-end;
+    gap: 24px;
+    padding-bottom: 8px;
+    border-bottom: none;
+}
+
+.turma-grupo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+    min-width: 150px;
+}
+
+.turma-barras {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 100%;
+}
+
+.barra-coluna-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    width: 18px;
+    box-sizing: border-box;
+    padding-top: 22px;
+}
+
+.barra-coluna {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.3s ease;
+    min-height: 2px;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.barra-quantidade {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #4b5563;
+    position: absolute;
+    bottom: 100%;
+    left: -6px;
+    right: -6px;
+    text-align: center;
+}
+
+.turma-rotulo {
+    margin-top: 12px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #1f2937;
+    text-align: center;
+}
+
+.turma-ingressantes {
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.badge-dados-limitados {
+    font-size: 0.7rem;
+    color: #b45309;
+    display: inline;
+    margin-left: 2px;
+}

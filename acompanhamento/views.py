@@ -114,6 +114,7 @@ def _barras_da_turma(turma):
     return [
         {
             "rotulo": rotulo,
+            "quantidade": turma[contagem],
             "total": f"{turma[contagem]} ({number_format(turma[percentual], decimal_pos=1)}%)",
             "largura": turma[percentual],
         }
@@ -217,12 +218,32 @@ def painel_sucesso_turma(request):
     elif not nivel_selecionado:
         nivel_selecionado = nivel_padrao
 
-    turmas = calcular_painel_sucesso_turma(nivel=nivel_selecionado)
+    ano_inicial = request.GET.get("ano_inicial", "").strip() or None
+    ano_final = request.GET.get("ano_final", "").strip() or None
+
+    try:
+        turmas = calcular_painel_sucesso_turma(
+            nivel=nivel_selecionado,
+            ano_inicial=ano_inicial,
+            ano_final=ano_final,
+        )
+    except ValueError as e:
+        messages.error(request, str(e))
+        turmas = calcular_painel_sucesso_turma(nivel=nivel_selecionado)
+
     for turma in turmas:
         turma["barras"] = _barras_da_turma(turma)
 
+    turmas_grafico = list(reversed(turmas))
+
+    alerta_dados_limitados = any(t.get("dados_limitados") for t in turmas)
+
     contexto = {
         "nivel_selecionado": nivel_selecionado,
+        "ano_inicial": request.GET.get("ano_inicial", ""),
+        "ano_final": request.GET.get("ano_final", ""),
         "turmas": turmas,
+        "turmas_grafico": turmas_grafico,
+        "alerta_dados_limitados": alerta_dados_limitados,
     }
     return render(request, "acompanhamento/painel_sucesso_turma.html", contexto)
