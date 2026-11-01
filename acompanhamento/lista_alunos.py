@@ -46,17 +46,19 @@ SITUACOES = {
     REGULAR: "Regular",
     IRREGULAR_COM_CHANCE: "Irregular",
     IRREGULAR_SEM_CHANCE: "Irregular",
-    CUMPRIDO: "Cumprido",
-    SEM_PRAZO: "Sem prazo cadastrado",
+    CUMPRIDO: "Regular",
+    SEM_PRAZO: "Não foi possível calcular",
     NAO_CALCULADO: "Não foi possível calcular",
 }
 SITUACOES_FILTRO = {
     IRREGULARES: "Irregular",
-    **{
-        situacao: rotulo
-        for situacao, rotulo in SITUACOES.items()
-        if situacao not in (IRREGULAR_COM_CHANCE, IRREGULAR_SEM_CHANCE)
-    },
+    REGULAR: "Regular",
+    NAO_CALCULADO: "Não foi possível calcular",
+}
+SITUACOES_POR_FILTRO = {
+    IRREGULARES: (IRREGULAR_COM_CHANCE, IRREGULAR_SEM_CHANCE),
+    REGULAR: (REGULAR, CUMPRIDO),
+    NAO_CALCULADO: (SEM_PRAZO, NAO_CALCULADO),
 }
 
 _FORMATO_SEMESTRE = re.compile(r"^\d{4}\.[12]$")
@@ -116,9 +118,7 @@ def _trajetorias_ativas(alunos):
 def _combina_situacao(resultado, situacao):
     if not situacao:
         return True
-    if situacao == IRREGULARES:
-        return resultado.situacao in (IRREGULAR_COM_CHANCE, IRREGULAR_SEM_CHANCE)
-    return resultado.situacao == situacao
+    return resultado.situacao in SITUACOES_POR_FILTRO[situacao]
 
 
 def listar_alunos_por_marco(

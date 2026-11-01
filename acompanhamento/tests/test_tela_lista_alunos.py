@@ -76,8 +76,6 @@ class TelaListaAlunosTests(TestCase):
             (
                 ("irregulares", "Irregular"),
                 ("regular", "Regular"),
-                ("cumprido", "Cumprido"),
-                ("sem_prazo", "Sem prazo cadastrado"),
                 ("nao_calculado", "Não foi possível calcular"),
             ),
         )
