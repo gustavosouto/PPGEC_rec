@@ -187,7 +187,35 @@ class ListaAlunosPorMarcoTests(TestCase):
                 self.assertIsNone(cartao_alunos_irregulares(data_referencia=REFERENCIA))
 
     def test_filtro_por_uma_situacao(self):
-        self.assertEqual(nomes(self.listar(situacao=REGULAR)), ["Ana Regular"])
+        self.assertEqual(
+            nomes(self.listar(situacao=REGULAR)),
+            ["Ana Regular", "Carla Cumprida"],
+        )
+
+    def test_coluna_situacao_mostra_os_tres_estados(self):
+        situacoes = {linha.aluno.nome: linha.situacao_display for linha in self.listar()}
+
+        self.assertEqual(situacoes["Ana Regular"], "Regular")
+        self.assertEqual(situacoes["Carla Cumprida"], "Regular")
+        self.assertEqual(situacoes["Bruno Com Chance"], "Irregular")
+        self.assertEqual(situacoes["Diego Sem Prazo"], "Não foi possível calcular")
+
+    def test_filtro_nao_calculado_reune_sem_prazo_e_falha_de_calculo(self):
+        original = nucleo.calcular_situacao_trajetoria
+
+        def falha_para_o_bruno(trajetoria, *args, **kwargs):
+            if trajetoria.aluno.nome == "Bruno Com Chance":
+                raise RuntimeError("cadastro inesperado")
+            return original(trajetoria, *args, **kwargs)
+
+        with patch.object(nucleo, "calcular_situacao_trajetoria", falha_para_o_bruno):
+            with self.assertLogs("acompanhamento.situacao", level="ERROR"):
+                linhas = self.listar(situacao=NAO_CALCULADO)
+
+        self.assertEqual(
+            nomes(linhas),
+            ["Bruno Com Chance", "Diego Sem Prazo", "Igor Doutorado"],
+        )
 
     def test_filtro_pelo_semestre_do_marco(self):
         self.assertEqual(
@@ -214,6 +242,8 @@ class ListaAlunosPorMarcoTests(TestCase):
             ({"situacao": "atrasado"}, "Situação inválida."),
             ({"situacao": IRREGULAR_COM_CHANCE}, "Situação inválida."),
             ({"situacao": IRREGULAR_SEM_CHANCE}, "Situação inválida."),
+            ({"situacao": CUMPRIDO}, "Situação inválida."),
+            ({"situacao": SEM_PRAZO}, "Situação inválida."),
             (
                 {"semestre_marco": "2026-2"},
                 "Semestre do marco inválido. Use o formato AAAA.1 ou AAAA.2.",
