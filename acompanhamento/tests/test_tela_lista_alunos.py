@@ -102,6 +102,21 @@ class TelaListaAlunosTests(TestCase):
         self.assertContains(resposta, "Projeto de dissertação ou qualificação e Defesa")
         self.assertContains(resposta, "Situação no marco")
 
+    def test_colunas_do_marco_vem_logo_depois_do_aluno(self):
+        resposta = self.client.get(
+            self.endereco, {"marco": MARCO_INTERMEDIARIO, "situacao_marco": IRREGULARES}
+        )
+        conteudo = resposta.content.decode()
+
+        self.assertLess(conteudo.index(">Situação no marco</th>"), conteudo.index(">Matrícula</th>"))
+        self.assertContains(resposta, '<span class="badge badge-no">Irregular</span>', html=True)
+
+    def test_sem_marco_a_lista_nao_mostra_as_colunas_do_marco(self):
+        resposta = self.client.get(self.endereco)
+
+        self.assertNotContains(resposta, ">Situação no marco</th>")
+        self.assertContains(resposta, ">Matrícula</th>")
+
     def test_qualquer_marco_recusa_situacao_ou_semestre_incompativeis(self):
         for parametros, mensagem in (
             (
