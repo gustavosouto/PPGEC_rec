@@ -2,6 +2,8 @@
 
 from datetime import date
 from io import BytesIO
+from unittest.mock import patch
+from zipfile import ZipFile
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -199,10 +201,10 @@ class TelaListaAlunosTests(TestCase):
         workbook = load_workbook(BytesIO(resposta.content), read_only=True)
         linhas = list(workbook.active.values)
 
-        self.assertEqual(linhas[0][1], "Nome")
-        self.assertEqual(linhas[1][1], "Atrasado Tela Marco")
-        self.assertEqual(linhas[1][8], "Irregular")
-        self.assertEqual(len(linhas), 2)
+        self.assertEqual(linhas[6][0], "ALUNO")
+        self.assertEqual(linhas[7][0], "Atrasado Tela Marco")
+        self.assertEqual(linhas[7][1], "Irregular")
+        self.assertEqual(len(linhas), 8)
         self.assertIn(
             f'alunos_por_marco_{MARCO_INTERMEDIARIO}_{timezone.localdate().isoformat()}.xlsx',
             resposta["Content-Disposition"],
@@ -240,9 +242,57 @@ class TelaListaAlunosTests(TestCase):
         self.assertEqual(resposta.status_code, 200)
         workbook = load_workbook(BytesIO(resposta.content), read_only=True)
         linhas = list(workbook.active.values)
-        self.assertEqual(len(linhas), 2)
-        self.assertEqual(linhas[1][7], "Projeto de dissertação ou qualificação e Defesa")
-        self.assertEqual(linhas[1][8], "Irregular")
+        self.assertEqual(len(linhas), 8)
+        self.assertEqual(linhas[7][1], "Projeto de dissertação ou qualificação e Defesa")
+        self.assertEqual(linhas[7][2], "Irregular")
+
+    def _baixar_planilha(self):
+        return self.client.get(
+            self.endereco,
+            {
+                "nome": "Atrasado Tela Marco",
+                "marco": MARCO_INTERMEDIARIO,
+                "situacao_marco": IRREGULARES,
+                "exportar": "xlsx",
+            },
+        )
+
+    def test_excel_tem_o_topo_e_as_cores_do_acadflow(self):
+        planilha = load_workbook(BytesIO(self._baixar_planilha().content)).active
+
+        self.assertEqual(
+            planilha["A2"].value, "PPGEC · Pós-Graduação em Engenharia de Computação"
+        )
+        self.assertEqual(planilha["A3"].value, "Alunos por marco acadêmico")
+        self.assertIn("Nome: Atrasado Tela Marco", planilha["A4"].value)
+        self.assertIn("Situação no marco: Irregular", planilha["A4"].value)
+        self.assertIn("1 aluno ", planilha["A5"].value)
+        self.assertEqual(planilha["A1"].fill.start_color.rgb[-6:], "002F69")
+        self.assertEqual(planilha["A7"].font.color.rgb[-6:], "00489A")
+        self.assertEqual(planilha["B8"].font.color.rgb[-6:], "B42336")
+        self.assertEqual(planilha["B8"].fill.start_color.rgb[-6:], "FFF0F1")
+        self.assertEqual(planilha.freeze_panes, "A8")
+        self.assertEqual(planilha.auto_filter.ref, "A7:L8")
+        self.assertFalse(planilha.sheet_view.showGridLines)
+
+    def test_excel_traz_a_logo_e_a_data_como_data(self):
+        arquivo = ZipFile(BytesIO(self._baixar_planilha().content))
+
+        self.assertIn("xl/media/image1.png", arquivo.namelist())
+        planilha = load_workbook(BytesIO(self._baixar_planilha().content)).active
+        self.assertEqual(planilha["C8"].value.date(), date(2025, 6, 1))
+        self.assertEqual(planilha["C8"].number_format, "DD/MM/YYYY")
+
+    def test_excel_sem_a_logo_continua_sendo_baixado(self):
+        with patch("acompanhamento.planilha_alunos.finders.find", return_value="nao-existe.png"):
+            with self.assertLogs("acompanhamento.planilha_alunos", level="ERROR"):
+                resposta = self._baixar_planilha()
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(
+            load_workbook(BytesIO(resposta.content)).active["A8"].value,
+            "Atrasado Tela Marco",
+        )
 
     def test_excel_grava_nome_iniciado_com_igual_como_texto(self):
         criar_aluno(
@@ -258,7 +308,7 @@ class TelaListaAlunosTests(TestCase):
 
         self.assertEqual(resposta.status_code, 200)
         workbook = load_workbook(BytesIO(resposta.content))
-        celula_nome = workbook.active["B2"]
+        celula_nome = workbook.active["A8"]
         self.assertEqual(celula_nome.value, "=1+1")
         self.assertEqual(celula_nome.data_type, "s")
 

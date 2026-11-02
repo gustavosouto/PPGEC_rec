@@ -1,9 +1,7 @@
 import logging
 import re
 from datetime import datetime, timedelta
-from io import BytesIO
 
-from openpyxl import Workbook
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -2691,11 +2689,12 @@ def alunos_view(request):
             filtros_marco_validos = False
         if exportar_excel and filtros_marco_validos:
             from acompanhamento.models import PlanilhaBaixada
+            from acompanhamento.planilha_alunos import resposta_planilha_alunos
 
-            resposta = _resposta_xlsx_alunos_por_marco(
+            resposta = resposta_planilha_alunos(
                 linhas_marco,
                 marco,
-                MARCOS[marco],
+                _filtros_ativos(request, filtros_rotulos),
             )
             PlanilhaBaixada.objects.create(
                 baixada_por=request.user,
@@ -2762,96 +2761,6 @@ def alunos_view(request):
             "can_view_caixa": _can_view_caixa(request.user),
         },
     )
-
-
-def _resposta_xlsx_alunos_por_marco(linhas, marco, marco_label):
-    from acompanhamento.lista_alunos import QUALQUER_MARCO
-
-    workbook = Workbook()
-    planilha = workbook.active
-    planilha.title = "Alunos"
-    planilha.append(
-        [
-            "Matrícula",
-            "Nome",
-            "E-mail",
-            "Polo",
-            "Nível",
-            "Ingresso",
-            "Orientador",
-            "Marco",
-            "Situação",
-            "Data limite",
-            "Prazo de reapresentação",
-            "Semestre do marco",
-            "Motivo",
-        ]
-    )
-    for celula in planilha[planilha.max_row]:
-        if isinstance(celula.value, str) and celula.value.startswith("="):
-            celula.data_type = "s"
-    for linha in linhas:
-        resultado = linha.resultado
-        if marco == QUALQUER_MARCO:
-            data_limite = "; ".join(
-                f"{nome}: {resultado_marco.data_limite.strftime('%d/%m/%Y') if resultado_marco.data_limite else ''}"
-                for nome, resultado_marco in linha.resultados_marco
-            )
-            prazo_reapresentacao = "; ".join(
-                f"{nome}: {resultado_marco.prazo_reapresentacao.strftime('%d/%m/%Y') if resultado_marco.prazo_reapresentacao else ''}"
-                for nome, resultado_marco in linha.resultados_marco
-            )
-            motivo = "; ".join(
-                f"{nome}: {resultado_marco.motivo}"
-                for nome, resultado_marco in linha.resultados_marco
-            )
-            marco_da_linha = linha.marco_display
-        else:
-            data_limite = (
-                resultado.data_limite.strftime("%d/%m/%Y")
-                if resultado.data_limite
-                else ""
-            )
-            prazo_reapresentacao = (
-                resultado.prazo_reapresentacao.strftime("%d/%m/%Y")
-                if resultado.prazo_reapresentacao
-                else ""
-            )
-            motivo = resultado.motivo
-            marco_da_linha = marco_label
-        planilha.append(
-            [
-                linha.aluno.matricula,
-                linha.aluno.nome,
-                linha.aluno.email,
-                linha.aluno.polo_atuacao.nome if linha.aluno.polo_atuacao else "",
-                linha.trajetoria.get_nivel_curso_display(),
-                linha.trajetoria.ingresso,
-                linha.trajetoria.orientador.nome if linha.trajetoria.orientador else "",
-                marco_da_linha,
-                linha.situacao_display,
-                data_limite,
-                prazo_reapresentacao,
-                linha.semestre_marco,
-                motivo,
-            ]
-        )
-        for celula in planilha[planilha.max_row]:
-            if isinstance(celula.value, str) and celula.value.startswith("="):
-                celula.data_type = "s"
-    planilha.freeze_panes = "A2"
-    planilha.auto_filter.ref = planilha.dimensions
-    arquivo = BytesIO()
-    workbook.save(arquivo)
-    response = HttpResponse(
-        arquivo.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    data_exportacao = timezone.localdate().isoformat()
-    response["Content-Disposition"] = (
-        f'attachment; filename="alunos_por_marco_{marco}_{data_exportacao}.xlsx"'
-    )
-    return response
 
 
 def _linhas_trajetoria(trajetoria):
