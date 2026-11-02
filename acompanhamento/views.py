@@ -9,6 +9,7 @@ from django.utils.formats import number_format
 from .chave import aviso_ativo
 from .decoradores import tela_do_modulo
 from .forms import MarcoCalendarioForm
+from .lista_alunos import cartao_alunos_irregulares
 from .models import ExecucaoAviso, MarcoCalendario
 from .servicos import (
     calcular_painel_docentes,
@@ -22,9 +23,13 @@ from .telas import TELAS
 @tela_do_modulo
 def inicio(request):
     """Página inicial do módulo, com a lista das telas disponíveis."""
-    telas = [{"titulo": titulo, "endereco": reverse(rota)} for titulo, rota in TELAS]
+    telas = [
+        {"titulo": titulo, "descricao": descricao, "endereco": reverse(rota), "icone": icone}
+        for titulo, descricao, rota, icone in TELAS
+    ]
     contexto = {
         "telas": telas,
+        "cartao_irregulares": cartao_alunos_irregulares(),
         "aviso_ativo": aviso_ativo(),
         "ultima_execucao_aviso": ExecucaoAviso.objects.first() if aviso_ativo() else None,
     }
