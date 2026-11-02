@@ -181,6 +181,8 @@ class TelaPainelSucessoTurmaTests(TestCase):
         self.assertEqual(barras[0]["largura"], 25.0)
         self.assertContains(response, 'style="height: 25.0%"', html=False)
         self.assertContains(response, "Concluídos: 1 (25,0%)")
+        self.assertContains(response, "data-grafico-rolagem")
+        self.assertContains(response, "<span>100%</span>", html=True)
 
     def test_tela_listada_na_pagina_inicial_do_modulo(self):
         """Garante que a nova tela está registrada e visível na página inicial do módulo."""

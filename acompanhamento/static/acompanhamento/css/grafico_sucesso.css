@@ -1,14 +1,15 @@
 .grafico-sucesso-container {
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 24px;
     margin-top: 16px;
-    margin-bottom: 24px;
 }
 
 .grafico-alerta-espacado {
     margin-top: 16px;
+}
+
+.grafico-aviso {
+    padding: 0.75rem 1rem;
+    border: 1px solid #c9dcf5;
+    border-radius: var(--radius-sm);
 }
 
 .grafico-legenda {
@@ -44,29 +45,69 @@
 .cor-6 { background-color: #7c3aed; }
 .cor-7 { background-color: #6b7280; }
 
+.grafico-corpo {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+/* Os rótulos seguem a mesma altura das barras: 22px para o número da barra
+   mais alta e 218px da escala de 0% a 100%. */
+.grafico-escala {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    width: 36px;
+    height: 240px;
+    padding-top: 22px;
+    color: #637083;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.grafico-escala span {
+    height: 0;
+    line-height: 0;
+}
+
+.grafico-corpo .tabela-envolvido {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .grafico-area {
     display: flex;
-    height: 320px;
-    align-items: flex-end;
-    gap: 24px;
+    width: max-content;
+    min-width: 100%;
     padding-bottom: 8px;
-    border-bottom: none;
 }
 
 .turma-grupo {
     display: flex;
+    flex: 1 0 174px;
     flex-direction: column;
     align-items: center;
-    height: 100%;
-    justify-content: flex-end;
-    min-width: 150px;
 }
 
+/* As linhas ficam no bloco inteiro da turma, sem espaço entre os grupos, para
+   atravessarem o gráfico sem falhas. */
 .turma-barras {
     display: flex;
     align-items: flex-end;
+    justify-content: center;
     gap: 3px;
-    height: 100%;
+    box-sizing: border-box;
+    width: 100%;
+    height: 240px;
+    padding-top: 22px;
+    border-bottom: 1px solid #c9d2df;
+    background-image: linear-gradient(#e9edf3 1px, transparent 1px);
+    background-size: 100% 25%;
+    background-origin: content-box;
+    background-clip: content-box;
 }
 
 .barra-coluna-wrapper {
@@ -76,8 +117,6 @@
     justify-content: flex-end;
     height: 100%;
     width: 18px;
-    box-sizing: border-box;
-    padding-top: 22px;
 }
 
 .barra-coluna {
@@ -119,4 +158,9 @@
     color: #b45309;
     display: inline;
     margin-left: 2px;
+}
+
+/* O botão tem a mesma altura dos campos do filtro. */
+.filtros-linha > .btn {
+    min-height: 46.6px;
 }
